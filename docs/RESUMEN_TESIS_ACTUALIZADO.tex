@@ -1,0 +1,482 @@
+\begingroup
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+
+Los agentes autónomos basados en Modelos de Lenguaje (LLM) representan una prometedora vía para dotar a los robots sociales de capacidades avanzadas de razonamiento, memoria y planificación en lenguaje natural. Sin embargo, la evaluación comparativa de arquitecturas de agente único (\textit{single-agent}) es aún fragmentada y carece de estándares unificados, generando importantes brechas en la reproducibilidad de resultados, la robustez ante el ruido perceptual del entorno y la portabilidad de las soluciones entre distintas plataformas robóticas.
+
+Frente a esta problemática, esta tesis aborda el desafío mediante el diseño y la implementación de un banco de pruebas (\textit{benchmark}) para la evaluación sistemática de arquitecturas de agente único que integran LLMs con herramientas de software. El protocolo de evaluación propuesto mantiene constante el módulo de herramientas (basado en ROS) para aislar y analizar específicamente el rendimiento de la política interna del agente, independientemente de las variaciones en la infraestructura subyacente.
+
+En concreto, el estudio compara cuatro arquitecturas agentivas fundamentales: (1) una arquitectura de \textbf{referencia} que combina ReAct con reflexión breve y recuperación de memoria, estableciendo una línea base de rendimiento; (2) \textbf{ReAct} \cite{yao2022react}, que integra razonamiento y acción de forma iterativa para decidir el siguiente paso basándose en observaciones previas; (3) \textbf{Plan-Then-Act}, que realiza una planificación completa antes de ejecutar las acciones en secuencia; y (4) \textbf{Reflexion} \cite{shinn2023reflexion}, que incorpora auto-evaluación y aprendizaje continuo mediante retroalimentación verbal.
+
+La validación experimental se realiza en un entorno simulado de robot social (Pepper), midiendo métricas clave como la tasa de éxito en tareas, el número de pasos, el tiempo de ejecución y el consumo de tokens. Los escenarios de prueba incluyen tareas de navegación, búsqueda de objetos, interacción multi-persona, uso de memoria episódica, percepción del entorno y planificación condicional, cada una evaluada bajo múltiples contextos variables para validar la robustez de las arquitecturas. Este enfoque sistemático permite identificar las fortalezas y limitaciones de cada estrategia agentiva, proporcionando evidencia empírica para la selección de arquitecturas según los requisitos específicos de aplicaciones robóticas sociales.
+
+\par\endgroup
+
+% ============================================
+% CAPÍTULO 1: INTRODUCCIÓN
+% ============================================
+
+\chapter{Introducción}
+
+\section{Contexto y motivación}
+\label{sec:contexto}
+Los agentes basados en modelos de lenguaje (LLM) prometen dotar a los robots sociales de razonamiento flexible, memoria y uso de herramientas en lenguaje natural para actuar en entornos dinámicos. Este enfoque se materializa en diversos patrones \emph{single-agent} claramente diferenciados: \textbf{ReAct}, que combina razonamiento y acción de forma iterativa \cite{yao2022react}; \textbf{Reflexion}, que incorpora auto-crítica y memoria episódica para mejorar el desempeño mediante retroalimentación verbal \cite{shinn2023reflexion}; \textbf{Plan-Then-Act}, que realiza una planificación completa previa a la ejecución buscando optimizar la secuencia de acciones antes de actuar; y arquitecturas de referencia que combinan elementos básicos de razonamiento, reflexión breve y recuperación selectiva de memoria.\\
+
+En este contexto, la madurez del \emph{tooling} contemporáneo (grafos y \emph{agentic concepts}) facilita implementar bucles de un solo agente con configuraciones conmutables de planificación, memoria, reflexión y llamadas a herramientas—exactamente los "mandos" que un \emph{benchmark} puede variar de forma controlada \cite{langgraphAgenticConcepts}. Sin embargo, estudios de ingeniería y revisiones recientes reportan resultados inconsistentes (degradación de desempeño al aumentar instrucciones/herramientas en ReAct) y demandan protocolos comparables y reportes consistentes \cite{langchainReactBenchmark2025, mohammadi2025survey, langchainMultiAgentBenchmark2025}.
+
+\section{Problema}
+\label{sec:problema}
+La evaluación comparativa de arquitecturas \emph{single-agent} con LLM es aún fragmentada y carece de estándares unificados, lo que dificulta la reproducibilidad de resultados, la robustez ante ruido perceptual (ASR), latencia y \emph{mismatch} del entorno, y la portabilidad entre plataformas robóticas \cite{mohammadi2025survey}. No existe consenso sobre qué diseños de un solo agente ofrecen mayor fiabilidad y eficiencia bajo restricciones de tarea y presupuesto de latencia/tokens; incluso se ha observado degradación en configuraciones ReAct al incrementar instrucciones y herramientas \cite{langchainReactBenchmark2025}. La comunidad reclama marcos que separen \emph{qué} evaluar de \emph{cómo} evaluar y que permitan comparaciones sistemáticas \cite{mohammadi2025survey}.
+
+\section{Pregunta de investigación}
+\label{sec:pregunta}
+¿Qué arquitectura \emph{single-agent} maximiza la tasa de éxito en tareas de robótica social manteniendo constante la interfaz de herramientas y el presupuesto de latencia y tokens?
+
+\section{Justificación}
+\label{sec:justificacion}
+Los hallazgos recientes en evaluación de agentes basados en LLM evidencian brechas de reproducibilidad, robustez y realismo experimental, y solicitan marcos que especifiquen con claridad qué se evalúa y cómo se evalúa \cite{mohammadi2025survey}. En respuesta directa a estas necesidades, esta tesis propone un benchmark reproducible que mantiene fija la interfaz de herramientas (ROS) y compara políticas \emph{single-agent} bajo escenarios simulados, con el fin de aislar el efecto de la política interna del agente de las variaciones de infraestructura \cite{langgraphAgenticConcepts, langchainReactBenchmark2025, langchainMultiAgentBenchmark2025}.\\
+
+Más específicamente, el aporte central consiste en un protocolo operativizado con dos componentes principales: (i) métricas de desempeño y eficiencia—tasa de éxito, número de pasos, tiempo de ejecución, consumo de tokens—y (ii) un diseño de robustez con contextos variables (diferentes distribuciones de ubicaciones, personas y objetos en el entorno) para cuantificar la capacidad de generalización de cada arquitectura. Estos resultados se sintetizan posteriormente en guías de selección arquitectónica condicionadas por restricciones de tarea, latencia y presupuesto de tokens, alineadas con taxonomías recientes y el interés industrial por arquitecturas agentivas \cite{huang2024levelsAgents, ibmAgenticArchitecture}.
+
+\section{Objetivos}
+\label{sec:objetivos}
+\subsection*{Objetivo general}
+
+Diseñar, implementar y validar un banco de pruebas reproducible para comparar cuatro arquitecturas \emph{single-agent} basadas en LLM, cuantificando desempeño, eficiencia y robustez en escenarios simulados de robótica social, y derivando lineamientos de selección arquitectónica.
+
+\subsection*{Objetivos específicos}
+\begin{itemize}
+    \item Definir un protocolo estándar con métricas operativas de desempeño (tasa de éxito), eficiencia (pasos promedio, tiempo de ejecución) y coste (tokens consumidos), junto con criterios de éxito específicos por categoría de tarea.
+    \item A partir de este protocolo, implementar cuatro arquitecturas agentivas: una de \textbf{referencia} (ReAct con reflexión breve y memoria), \textbf{ReAct} estándar, \textbf{Plan-Then-Act} y \textbf{Reflexion}, manteniendo paridad en la interfaz de herramientas y límites de iteración.
+    \item Configurar y documentar familias de tareas con generadores de contextos (semillas de mundo, distribuciones de entidades) y criterios de éxito diferenciados para cada categoría.
+    \item Posteriormente, ejecutar experimentos con contextos variables para medir la robustez de cada arquitectura y analizar patrones de degradación en función de la complejidad de la tarea.
+    \item Finalmente, sintetizar los resultados en lineamientos de selección que relacionen características de tarea con arquitectura óptima.
+\end{itemize}
+
+\section{Alcance y supuestos}
+\label{sec:alcance}
+\subsection{Alcances} 
+\begin{itemize}
+    \item Comparar cuatro arquitecturas \emph{single-agent} basadas en LLM: referencia, ReAct, Plan-Then-Act y Reflexion.
+    \item Mantener constante el módulo de herramientas basado en \textbf{ROS} (simulado para robot Pepper) para aislar la política interna del agente.
+    \item Evaluar en escenarios simulados con tareas relevantes para interacción humano-robot (HRI): navegación, búsqueda de objetos, interacción multi-persona, uso de memoria, percepción condicional y planificación multi-paso.
+    \item Medir éxito de tarea (binario: éxito/fallo), eficiencia (pasos promedio, tiempo de ejecución) y coste (tokens consumidos) bajo múltiples contextos variables.
+    \item Analizar patrones de desempeño por categoría de tarea y arquitectura, identificando fortalezas y limitaciones relativas.
+\end{itemize}
+
+\subsection{Supuestos} 
+\begin{itemize}
+    \item Disponibilidad de una \textbf{interfaz ROS simulada} estable para sensado/actuación y llamadas a herramientas.
+    \item Acceso a un \textbf{LLM} específico (GPT-4o-mini vía Azure OpenAI) con control de latencia y presupuesto de tokens.
+    \item Capacidad de generar múltiples contextos de evaluación variando distribuciones de ubicaciones, personas y objetos.
+    \item Registro homogéneo de trazas de ejecución, métricas de eficiencia y consumo de recursos para todas las arquitecturas.
+    \item Paridad de configuración entre políticas (límites de iteración, estructura de prompts, semillas de generación) para asegurar comparabilidad y reproducibilidad \cite{langgraphAgenticConcepts, mohammadi2025survey}.
+\end{itemize}
+
+% ===========================================
+% CAPÍTULO 2: MARCO TEÓRICO
+% ===========================================
+\chapter{Marco teórico}
+\label{chap:marco-teorico}
+
+\section{Conceptos fundamentales}
+\label{sec:conceptos}
+
+\subsection*{Agentes basados en LLM y bucle de control}
+Un \textbf{agente} basado en modelos de lenguaje (LLM) controla el \emph{flujo de decisión} de una aplicación interactiva: en cada paso decide si \emph{pensar}, \emph{recuperar información}, \emph{llamar una herramienta} o \emph{actuar} en el entorno, en función del estado y del objetivo. A diferencia de flujos rígidos predefinidos, el agente elige dinámicamente el camino para resolver tareas complejas, adaptándose a las condiciones observadas. 
+
+Este enfoque flexible se concreta en diversos patrones \textit{single-agent} ampliamente documentados en la literatura. El patrón más fundamental es \textbf{ReAct} (``think–act–observe''), que alterna razonamiento con llamadas a herramientas y usa las observaciones resultantes para continuar el plan de manera iterativa \cite{yao2022react}. Sobre esta base, \textbf{Reflexion} extiende el paradigma permitiendo que el mismo agente se \emph{auto-evalúe}, registre memorias episódicas de intentos previos y ajuste su estrategia en el siguiente intento sin necesidad de re-entrenamiento del modelo subyacente \cite{shinn2023reflexion}. 
+
+Complementariamente, existen arquitecturas que incorporan planificación estructurada antes de la ejecución. El enfoque \textbf{Plan-Then-Act} realiza una fase de planificación completa que genera una secuencia de acciones, para luego ejecutarlas en orden sin intercalar razonamiento adicional durante la ejecución. Este patrón contrasta con la naturaleza reactiva de ReAct, priorizando la coherencia global del plan sobre la adaptabilidad momento a momento.
+
+\subsection*{Uso de herramientas (\emph{tool-use})}
+La capacidad de integrar módulos externos constituye un componente esencial de las arquitecturas agentivas modernas. El \emph{tool-use} permite incorporar APIs, planificadores simbólicos, intérpretes de código y sistemas robóticos (como ROS) en el bucle deliberativo del agente, extendiendo significativamente sus capacidades más allá del procesamiento puramente lingüístico.
+
+En robótica social (HRI), esta integración de herramientas cobra particular relevancia. Los agentes deben incorporar retroalimentación perceptual del entorno físico y coordinar acciones con sistemas de sensado y actuación. La experiencia de interacción humano-robot introduce además criterios específicos de efectividad, seguridad y calidad experiencial que trascienden el mero cumplimiento de objetivos funcionales \cite{goodrich2007hri}.
+
+\subsection*{ROS y consideraciones prácticas}
+\textbf{ROS} (Robot Operating System) constituye el \emph{middleware} dominante en investigación robótica contemporánea \cite{quigley2009ros}. Este sistema abstrae la complejidad del hardware específico, expone un sistema de mensajería entre procesos distribuidos y ofrece un ecosistema maduro de herramientas de visualización (RViz) y descripción de robots (URDF). Esta estandarización facilita significativamente la portabilidad de experimentos entre diferentes plataformas robóticas, permitiendo que las arquitecturas agentivas se evalúen de manera consistente independientemente del hardware subyacente.
+
+En el contexto de interfaces naturales, el canal de entrada típico es el \textbf{reconocimiento automático de voz} (ASR, \emph{Automatic Speech Recognition}). Las imperfecciones inherentes a estos sistemas—tanto en términos de errores de transcripción como de latencia de procesamiento—pueden afectar la estabilidad y el desempeño del agente, introduciendo factores de variabilidad que deben considerarse en evaluaciones rigurosas \cite{jurafsky2023slp3}.
+
+\subsection*{Evaluación y robustez}
+La evaluación sistemática de agentes basados en LLM representa un desafío metodológico activo. Una encuesta reciente de Mohammadi et al. sistematiza tanto \emph{qué} evaluar (conducta observable, capacidades específicas, confiabilidad, seguridad) como \emph{cómo} evaluar (modos de interacción, conjuntos de datos de referencia, métricas cuantitativas y herramientas de análisis), identificando brechas críticas de \emph{reproducibilidad}, \emph{robustez} y \emph{realismo} en la literatura actual \cite{mohammadi2025survey}. 
+
+En el contexto de esta tesis, el concepto de \emph{robustez} denota específicamente la capacidad de una arquitectura para sostener su nivel de desempeño bajo variaciones contextuales del entorno—tales como diferentes distribuciones de ubicaciones, personas y objetos—manteniendo constantes los demás factores experimentales. Esta definición operativa permite cuantificar la capacidad de generalización de cada estrategia agentiva.
+
+\section{Modelos y definiciones}
+\label{sec:modelos}
+
+\subsection*{Bucle único de agente con herramientas}
+El agente se concibe como una política parametrizada por un LLM que opera sobre un entorno parcialmente observable. En cada paso temporal, el agente ejecuta el siguiente ciclo:  
+\begin{enumerate}
+    \item Recibe una \textbf{observación} del entorno actual y mantiene una \textbf{memoria} interna que registra el historial relevante de interacciones previas;
+    \item Genera \emph{texto deliberativo} interno (\emph{pensamiento} o plan parcial) que explicita su razonamiento sobre cómo proceder;
+    \item Selecciona una \textbf{acción} concreta, que puede consistir en invocar una herramienta disponible, consultar su memoria episódica o emitir un comando directo al sistema ROS;
+    \item Observa el resultado producido por la acción ejecutada y actualiza su memoria interna incorporando esta nueva información.
+\end{enumerate}
+
+Este esquema conceptual unifica las cuatro arquitecturas implementadas en esta tesis: \textbf{ReAct}, que intercala pensamiento, acción y observación de manera iterativa \cite{yao2022react}; \textbf{Reflexion}, que incorpora memoria episódica reflexiva para aprender de intentos previos \cite{shinn2023reflexion}; \textbf{Plan-Then-Act}, que realiza la deliberación completa en el paso 2 antes de ejecutar la secuencia de acciones; y la arquitectura de \textbf{referencia}, que combina elementos básicos de razonamiento con reflexión breve y recuperación selectiva de memoria.
+
+\subsection*{Marcos de arquitectura}
+Los marcos conceptuales modernos como \textbf{LangGraph} y los \emph{agentic concepts} formalizan a los agentes como controladores de flujo equipados con primitivas para memoria, planificación, \emph{tool-use} y estructuras de control (bucles, ramas condicionales) \cite{langgraphAgenticConcepts}. Esta abstracción permite implementar variantes \textit{single-agent} intercambiables sin modificar la interfaz con el sistema robótico, facilitando comparaciones controladas entre diferentes políticas de decisión.
+
+\subsection*{Evaluación y \emph{benchmarks}}
+La literatura reciente en evaluación de agentes distingue claramente entre objetivos de evaluación (\emph{tasa de éxito en tareas}, seguridad, eficiencia) y procesos metodológicos (modos de interacción, conjuntos de tareas estandarizados, métricas cuantificables, herramientas de registro y análisis). Para agentes que integran herramientas externas, se recomienda especialmente la evaluación basada en \emph{ejecución efectiva} y trazabilidad completa mediante logs detallados, garantizando así la reproducibilidad de los experimentos \cite{mohammadi2025survey}.
+
+\section{Terminología}
+\label{sec:terminologia}
+
+\subsection*{Entorno, tareas y política}
+\begin{itemize}
+    \item \textbf{Entorno}: Sistema que define el espacio de estados subyacente, típicamente no observable directamente por el agente, quien solo tiene acceso a \emph{observaciones} parciales del estado real. Incluye ubicaciones, personas, objetos y sus relaciones espaciales.
+    \item \textbf{Acciones}: Conjunto de operaciones disponibles para el agente, incluyendo llamadas a \textbf{herramientas} (APIs de consulta, servicios ROS de navegación y percepción) o comandos directos de actuación sobre el robot.
+    \item \textbf{Memoria}: Almacén persistente de información episódica y semántica, actualizado dinámicamente por el agente para mantener contexto histórico de interacciones previas y hechos relevantes descubiertos durante la ejecución.
+    \item \textbf{Política}: Estrategia de decisión que mapea el estado observado y el contenido de la memoria a la elección del siguiente paso (pensar, actuar mediante herramientas, recuperar información de memoria, reflexionar sobre resultados previos).
+\end{itemize}
+
+\subsection*{Métricas}
+\begin{itemize}
+    \item \textbf{Tasa de éxito}: Proporción de episodios que satisfacen los criterios de finalización exitosa definidos para cada categoría de tarea. Métrica binaria que determina si el objetivo fue alcanzado completamente.
+    \item \textbf{Eficiencia}: Número de pasos de decisión-acción ejecutados por el agente (cuántas iteraciones del bucle) y tiempo total transcurrido desde el inicio hasta la finalización de la tarea, medido en segundos.
+    \item \textbf{Coste computacional}: Cantidad de tokens consumidos en llamadas al LLM durante toda la ejecución de la tarea, que determina directamente el costo económico de operación del sistema.
+    \item \textbf{Robustez}: Capacidad de mantener desempeño consistente bajo variaciones contextuales del entorno, medida como la variación relativa de la tasa de éxito y eficiencia a través de múltiples contextos generados aleatoriamente con diferentes semillas (diferentes distribuciones de ubicaciones, personas y objetos).
+\end{itemize}
+
+% ===========================================================
+% CAPÍTULO 3: ESTADO DEL ARTE Y TRABAJO RELACIONADO
+% ===========================================================
+\chapter{Estado del arte y trabajo relacionado}
+\label{chap:estado-arte}
+
+\section{Visión general del estado del arte}
+La literatura reciente sobre \textit{agentes basados en LLM} ha experimentado avances significativos, particularmente en \textbf{entornos no encarnados} (aplicaciones web, de escritorio y uso de APIs), y en menor medida en \textbf{entornos encarnados} simulados. Dentro del primer grupo, diversos patrones \emph{single-agent} han emergido como estrategias fundamentales: \textbf{ReAct}, que implementa un ciclo de pensar–actuar–observar \cite{yao2022react}, y \textbf{Reflexion}, que incorpora auto-crítica y memoria episódica para mejorar el desempeño entre intentos sucesivos \cite{shinn2023reflexion}. Complementariamente, el enfoque \textbf{Plan-Then-Act} propone realizar una planificación completa antes de la ejecución, mientras que arquitecturas de referencia combinan elementos básicos de estos paradigmas. Estas estrategias definen cómo un único agente decide \emph{cuándo} pensar, recuperar información de memoria y ejecutar acciones.
+
+Sin embargo, \textbf{la evidencia comparativa rigurosa} proviene casi exclusivamente de dominios web, de escritorio o de simuladores de tareas domésticas. Crucialmente, \textit{no existen aún benchmarks estandarizados y reproducibles centrados específicamente en \textbf{robótica social}} con interacción humano–robot (HRI) en plataformas físicas reales como Pepper o NAO. Las encuestas de evaluación recientes subrayan la necesidad de separar claramente \emph{qué} se evalúa (conducta observable, capacidades específicas, confiabilidad, seguridad) de \emph{cómo} se evalúa (modos de interacción, conjuntos de tareas, métricas, herramientas de análisis), señalando brechas críticas de \textbf{reproducibilidad}, \textbf{robustez} y \textbf{realismo experimental} \cite{mohammadi2025survey}.
+
+Adicionalmente, la evaluación en HRI introduce factores prácticos ausentes en entornos web o de escritorio: interfaces de \textbf{reconocimiento automático de voz} (ASR) inherentemente ruidosas, latencia variable en procesamiento, dinámicas de interacción social y restricciones de seguridad del usuario \cite{goodrich2007hri, jurafsky2023slp3}. Por estas razones, una evaluación rigurosa en robótica social requiere mantener fija la \textbf{interfaz de herramientas} (típicamente basada en ROS) \cite{quigley2009ros} mientras se varía únicamente la \textbf{política interna} del agente, evitando así confundir cambios arquitectónicos con variaciones en las capacidades subyacentes del hardware robótico.
+
+En este contexto, marcos conceptuales contemporáneos como \textbf{LangGraph} y los \emph{agentic concepts} facilitan la configuración de variantes \emph{single-agent} (con diferentes combinaciones de planificación, memoria, reflexión y tool-use) manteniendo constante la interfaz con el entorno o robot, lo cual resulta fundamental para establecer comparaciones justas \cite{langgraphAgenticConcepts}. Paralelamente, el creciente interés académico e industrial por \textbf{arquitecturas agentivas} y \textbf{taxonomías de niveles de agentes} refuerza la urgencia de desarrollar protocolos comparables que contemplen restricciones reales de latencia, coste computacional y seguridad \cite{ibmAgenticArchitecture, huang2024levelsAgents}.
+
+\section{Trabajo relacionado}
+\label{sec:relacionado}
+
+\paragraph{Patrones \emph{single-agent} y su transferibilidad a robótica social.}
+El patrón \textbf{ReAct} ha demostrado mejoras en la toma de decisiones al fundamentarlas en evidencias observables del entorno \cite{yao2022react}. Sobre esta base, \textbf{Reflexion} extiende las capacidades del agente añadiendo memoria episódica estructurada y mecanismos de ajuste entre intentos consecutivos \cite{shinn2023reflexion}. Por su parte, el enfoque \textbf{Plan-Then-Act} propone generar un plan completo antes de iniciar la ejecución, optimizando la coherencia global de la secuencia de acciones a costa de menor adaptabilidad durante la ejecución.
+
+Estas ideas conceptuales resultan \emph{potencialmente transferibles} a robótica social, siempre que se mantenga \emph{constante} el módulo de herramientas subyacente (típicamente implementado sobre ROS) y se modifique únicamente la \emph{política de decisión} del agente. Esta separación de responsabilidades permite aislar el impacto de la arquitectura agentiva de las variaciones en las capacidades perceptuales y actuadoras del sistema robótico.
+
+\paragraph{Evaluación y benchmarking.}
+La encuesta sistemática de Mohammadi et al. \cite{mohammadi2025survey} recomienda reportar cuatro dimensiones fundamentales: \textbf{éxito en tareas} (finalización correcta de objetivos), \textbf{eficiencia} (pasos ejecutados y tiempo transcurrido), \textbf{coste computacional} (tokens consumidos y latencia de inferencia), y \textbf{robustez} ante variaciones contextuales. Estudios de ingeniería recientes evidencian que, incluso en arquitecturas \emph{single-agent}, escalar el número de herramientas o la complejidad de las instrucciones puede degradar el desempeño si no se controlan adecuadamente la instrumentación y la trazabilidad de ejecución, lo que motiva el desarrollo de protocolos reproducibles \cite{langchainReactBenchmark2025, langchainMultiAgentBenchmark2025}.
+
+Para el dominio específico de robótica social, esta tesis adopta dichos principios metodológicos, pero los \textbf{contextualiza en HRI}: considerando interfaces de voz potencialmente ruidosas, percepciones imperfectas del entorno, restricciones de seguridad en interacción humana y métricas de calidad experiencial \cite{goodrich2007hri, jurafsky2023slp3}.
+
+\section{Vacíos y oportunidades}
+\label{sec:vacios}
+\begin{itemize}
+    \item \textbf{Falta de benchmarks específicos de robótica social.} No existen suites de evaluación estandarizadas que comparen arquitecturas \emph{single-agent} en robots sociales reales (Pepper/NAO) con tareas de interacción humano-robot representativas. \emph{Oportunidad}: diseñar un \textit{benchmark} que mantenga constante la interfaz ROS y las herramientas disponibles, variando exclusivamente la política interna del agente para permitir comparaciones controladas.
+    
+    \item \textbf{Brecha entre simulación y entorno real.} La mayoría de la evidencia experimental proviene de entornos web, de escritorio o simuladores idealizados que no capturan factores críticos de robótica física: ruido en reconocimiento de voz, latencia variable en procesamiento, dinámica impredecible de interacción social ni restricciones de seguridad física. \emph{Oportunidad}: evaluar arquitecturas en escenarios simulados que incorporen variabilidad contextual realista, estableciendo una base metodológica para futura validación con hardware real.
+    
+    \item \textbf{Reporte incompleto de eficiencia y coste.} Muchos estudios priorizan únicamente la tasa de éxito de tareas, omitiendo métricas de eficiencia (número de pasos, tiempo de ejecución) y coste computacional (consumo de tokens, implicaciones económicas), así como análisis de varianza entre contextos. \emph{Oportunidad}: establecer un protocolo de métricas multidimensional que capture éxito, eficiencia y coste de manera sistemática, junto con análisis de dispersión estadística.
+    
+    \item \textbf{Limitada evidencia de portabilidad entre LLMs.} Existe escasa documentación sobre cómo varía el desempeño de una misma arquitectura agentiva al cambiar el LLM subyacente, manteniendo constante la interfaz de herramientas. \emph{Oportunidad}: aunque esta tesis se centra en un LLM específico (GPT-4o-mini), el diseño modular establece las bases para futuros estudios comparativos entre diferentes modelos de lenguaje.
+    
+    \item \textbf{Trazabilidad y reproducibilidad insuficientes.} Faltan repositorios públicos con logs estructurados, fixtures de configuración y scripts de ejecución que permitan replicar experimentos de manera independiente. \emph{Oportunidad}: publicar artefactos reproducibles completos (código fuente, configuraciones de arquitecturas, definiciones de tareas, generadores de contextos) que faciliten la validación independiente y la extensión futura del trabajo.
+\end{itemize}
+
+% =========================
+% CAPÍTULO 4: METODOLOGÍA
+% =========================
+\chapter{Metodología}
+\label{chap:metodologia}
+
+\section{Diseño general del estudio}
+\label{sec:disenio}
+
+Este trabajo implementa un estudio experimental comparativo de cuatro arquitecturas agentivas basadas en LLM en el dominio de robótica social. El diseño metodológico sigue un enfoque de \textbf{evaluación controlada en simulación física} donde se mantiene constante la interfaz de herramientas (servicios ROS reales) mientras se varía únicamente la política de decisión del agente, permitiendo aislar el impacto de la arquitectura sobre el desempeño observado.
+
+Para implementar esta evaluación controlada, las ejecuciones se realizan en \textbf{simulación física completa mediante Gazebo}, el simulador robótico estándar de ROS, utilizando entornos 3D realistas que incorporan física de colisiones, navegación continua y percepción sensorial mediante LIDAR y cámaras RGB-D. Esta aproximación garantiza que los resultados sean representativos de condiciones operacionales reales, incluyendo ruido perceptual, latencia de procesamiento y restricciones espaciales físicas.
+
+Desde el punto de vista del diseño experimental, el estudio adopta un esquema \textbf{intra-sujeto} donde todas las arquitecturas son evaluadas sobre el mismo conjunto de tareas en múltiples entornos 3D, garantizando comparabilidad directa de resultados. Esta estrategia permite cuantificar tanto el desempeño promedio de cada arquitectura como su robustez ante variaciones espaciales y contextuales del entorno.
+
+En términos de organización, la metodología se estructura en cuatro componentes principales:
+
+\begin{enumerate}
+    \item \textbf{Definición del espacio de tareas}: conjunto estandarizado de 52 tareas categorizadas según tipo de capacidad requerida (navegación, búsqueda, memoria, percepción, condicionales, multi-paso).
+    
+    \item \textbf{Entornos Gazebo estáticos}: ocho mundos 3D fijos que proporcionan escenarios representativos de espacios domésticos, comerciales y de oficina con configuraciones espaciales deterministas.
+    
+    \item \textbf{Implementación de arquitecturas}: cuatro políticas agentivas (Reference, ReAct, Plan-Then-Act, Reflexion) con interfaces homogéneas que invocan el mismo conjunto de 19 herramientas ROS del \texttt{Task\_module}.
+    
+    \item \textbf{Protocolo de medición}: captura automática de métricas de desempeño (tasa de éxito), eficiencia (pasos, tiempo) y coste (tokens consumidos) para cada episodio de ejecución.
+\end{enumerate}
+
+Este diseño permite responder a la pregunta de investigación mediante comparación sistemática de las cuatro arquitecturas bajo condiciones experimentales controladas, generando evidencia cuantitativa sobre sus fortalezas y limitaciones relativas.
+
+\section{Componentes del sistema}
+\label{sec:componentes}
+
+Habiendo establecido el marco general del estudio, a continuación se describen en detalle los cuatro componentes técnicos que conforman la infraestructura experimental del benchmark.
+
+\subsection*{Módulo de herramientas ROS}
+
+El primer componente fundamental del sistema es la interfaz de herramientas robóticas. Concretamente, el sistema implementa 19 herramientas basadas en servicios ROS reales del \texttt{Task\_module}, organizadas en cuatro categorías funcionales:
+
+\paragraph{Navegación (3 herramientas):} \texttt{go\_to\_location}, \texttt{follow\_person}, \texttt{set\_current\_place}. Permiten movimiento del robot entre ubicaciones predefinidas del mapa y seguimiento de personas.
+
+\paragraph{Percepción (7 herramientas):} Complementando las capacidades de movilidad, este grupo incluye \texttt{find\_object}, \texttt{count\_objects}, \texttt{search\_for\_specific\_person}, \texttt{find\_item\_with\_characteristic}, \texttt{get\_person\_gesture}, \texttt{get\_items\_on\_top\_of\_furniture}, \texttt{view\_description}. Proporcionan capacidades de reconocimiento visual mediante YOLO y GPT-4 Vision, detectando personas, objetos, gestos y descripciones de escenas.
+
+\paragraph{Interacción verbal (3 herramientas):} Para la comunicación con usuarios, el sistema dispone de \texttt{speak}, \texttt{listen}, \texttt{question\_and\_answer}, que facilitan interacción bidireccional mediante síntesis de voz y reconocimiento automático de habla.
+
+\paragraph{Manipulación (2 herramientas):} Finalmente, las herramientas \texttt{ask\_for\_object} y \texttt{give\_object} permiten solicitar objetos a personas y entregarlos mediante coordinación de posturas predefinidas.
+
+Cada herramienta invoca servicios ROS específicos del \texttt{Task\_module}, implementando sincronización mediante \texttt{execution\_lock} para evitar conflictos de concurrencia. Las herramientas de percepción integran modelos de visión por computadora (reconocimiento de objetos mediante YOLO, análisis de escenas con GPT-4 Vision) con datos sensoriales del robot Pepper simulado en Gazebo.
+
+\subsection*{Entornos de simulación Gazebo}
+
+El segundo componente esencial corresponde a los escenarios de evaluación. A diferencia de benchmarks previos que operan en entornos abstractos, este estudio evalúa las arquitecturas en \textbf{dos entornos 3D estáticos} implementados en Gazebo, el simulador robótico estándar de ROS. Estos mundos proporcionan escenarios fijos representativos de aplicaciones reales de robótica social en espacios interiores:
+
+\begin{itemize}
+    \item \texttt{small\_house}: Hogar doméstico con múltiples habitaciones (sala, cocina, dormitorios), mobiliario estático y distribución espacial fija, representativo de entornos residenciales. Permite evaluar tareas de navegación doméstica, búsqueda de objetos en contextos familiares e interacciones sociales en espacios íntimos.
+    
+    \item \texttt{bookstore}: Complementando el escenario doméstico, este entorno representa una librería comercial con estanterías, pasillos y zonas de atención al cliente, configuración estática de mobiliario retail. Facilita la evaluación de tareas de servicio al cliente, navegación en entornos comerciales estructurados y percepción de objetos en espacios públicos.
+\end{itemize}
+
+En términos de implementación técnica, cada entorno se instancia mediante \texttt{launch files} específicos que configuran el robot Pepper virtual sin brazos (\texttt{pepper\_gazebo\_plugin\_in\_house\_CPU\_no\_arms.launch}, \texttt{pepper\_gazebo\_plugin\_in\_bookstore\_CPU\_no\_arms.launch}), optimizados para ejecución en CPU sin requerir aceleración GPU.
+
+Respecto a las propiedades físicas, los entornos incorporan \textbf{física realista} mediante el motor de simulación ODE (Open Dynamics Engine), incluyendo detección de colisiones, fricción de superficies y restricciones cinemáticas del robot. La percepción sensorial se simula mediante LIDAR virtual (conversión de nube de puntos a laser scan mediante \texttt{pc\_to\_laserscan.launch}) y cámaras RGB-D, generando datos con ruido característico de sensores reales.
+
+\paragraph{Características estáticas.} Los mundos Gazebo son \textbf{archivos de escena fijos} (\texttt{.world}) que definen geometrías, iluminación y propiedades físicas de manera determinista. La distribución espacial de mobiliario, obstáculos y puntos de navegación permanece constante entre ejecuciones, lo cual simplifica la reproducibilidad pero limita la variabilidad contextual. Esta restricción motiva el diseño de una \textbf{suite de tareas diversa} que explote diferentes regiones y configuraciones dentro de cada mundo estático para evaluar robustez arquitectónica.
+
+\subsection*{Suite de tareas estandarizadas}
+
+En complemento a la infraestructura robótica y los entornos simulados, el tercer componente del sistema es el conjunto de tareas de evaluación. El benchmark comprende 52 tareas organizadas en siete categorías según el tipo de capacidad cognitiva y motriz requerida:
+
+\begin{enumerate}
+    \item \textbf{Navegación simple (7 tareas):} Movimiento a ubicaciones específicas sin requisitos adicionales (ej: ``Go to the office'').
+    
+    \item \textbf{Búsqueda y verificación (8 tareas):} Localización de personas mediante preguntas a otros ocupantes (ej: ``Find Carlos and greet him'').
+    
+    \item \textbf{Interacción multi-persona (8 tareas):} Coordinación con múltiples individuos en secuencia (ej: ``Greet Alice, then David, then Maria'').
+    
+    \item \textbf{Memoria y razonamiento (9 tareas):} Uso de memoria episódica para completar objetivos (ej: ``Remember where you saw the keys, then go get them'').
+    
+    \item \textbf{Percepción y descripción (8 tareas):} Capacidades de observación y reporte del entorno (ej: ``Describe what's in the cafeteria'').
+    
+    \item \textbf{Lógica condicional (6 tareas):} Decisiones basadas en condiciones del estado (ej: ``If Carlos is in the office, greet him; otherwise go to the lobby'').
+    
+    \item \textbf{Multi-paso complejas (6 tareas):} Tareas que requieren planificación y ejecución de secuencias largas (ej: ``Find the package, deliver it to Maria, and report back'').
+\end{enumerate}
+
+Cada tarea se define mediante un diccionario estructurado que incluye: identificador único, categoría, descripción en lenguaje natural, plan esperado (secuencia de herramientas), nivel de dificultad (easy/medium/hard) y tipo de entorno requerido (house/office/mixed). Esta estructura permite análisis granular del desempeño por categoría y dificultad.
+
+\subsection*{Implementación de arquitecturas}
+
+Finalmente, el cuarto componente del sistema corresponde a las políticas de decisión evaluadas. Las cuatro arquitecturas agentivas se implementaron sobre una clase base común (\texttt{BaseAgent}) que define la interfaz estándar: método \texttt{run(task)} que recibe una descripción en lenguaje natural y retorna un diccionario con resultados de ejecución (éxito, pasos, traza, tiempo). Esta homogeneización permite comparación directa sin variaciones en la infraestructura de invocación.
+
+\paragraph{Reference (baseline):} Como línea base, esta arquitectura combina un bucle ReAct simple con reflexión breve al inicio de cada iteración y recuperación selectiva de memoria cuando es relevante. Sirve como arquitectura de control que incorpora mecanismos básicos sin complejidad adicional.
+
+\paragraph{ReAct estándar:} Avanzando desde la línea base, esta arquitectura implementa el ciclo think–act–observe iterativo: en cada paso, el agente genera pensamiento explícito, selecciona una acción (herramienta o finalización), observa el resultado y actualiza su razonamiento. Continúa hasta alcanzar un estado terminal o agotar el límite de iteraciones.
+
+\paragraph{Plan-Then-Act:} Adoptando un enfoque alternativo, esta arquitectura realiza planificación completa en un paso inicial generando toda la secuencia de acciones necesarias, luego ejecuta el plan en orden estricto sin intercalar razonamiento adicional. Prioriza coherencia global del plan sobre adaptabilidad reactiva.
+
+\paragraph{Reflexion:} Finalmente, esta arquitectura extiende ReAct con capacidad de auto-evaluación al finalizar cada intento. Si la tarea falla, genera crítica reflexiva sobre el fallo, almacena esta retroalimentación en memoria episódica y realiza un nuevo intento aprovechando las lecciones aprendidas. Permite hasta 3 intentos por tarea.
+
+Todas las arquitecturas reciben el mismo LLM subyacente (GPT-4o-mini vía Azure OpenAI) y comparten límites de iteración configurables (15 iteraciones por defecto, ampliables a 20 para tareas complejas). Esta paridad garantiza que las diferencias de desempeño se atribuyan exclusivamente a la política de decisión, no a ventajas en capacidad computacional o configuración.
+
+\section{Procedimiento experimental}
+\label{sec:pipeline}
+
+Una vez definidos los componentes del sistema, resulta fundamental especificar el protocolo mediante el cual se ejecutan los experimentos. El procedimiento de evaluación sigue una secuencia sistemática de cuatro fases diseñada para garantizar comparabilidad y reproducibilidad:
+
+\subsection*{Fase 1: Configuración inicial}
+
+Para cada arquitectura bajo evaluación:
+\begin{enumerate}
+    \item Instanciación del LLM con parámetros fijos (temperatura = 0.0 para determinismo, límite de tokens estándar).
+    \item Creación del agente con la política específica, vinculando el LLM y las 19 herramientas simuladas.
+    \item Verificación de disponibilidad de servicios (confirmación de acceso a API de Azure OpenAI).
+\end{enumerate}
+
+\subsection*{Fase 2: Inicialización de entornos Gazebo}
+
+Completada la configuración del agente, la segunda fase corresponde a la preparación del entorno simulado. Para cada suite de tareas:
+\begin{enumerate}
+    \item Carga del conjunto de 52 tareas categorizadas desde los módulos de escenarios.
+    \item Selección del entorno Gazebo apropiado según tipo de tarea: \texttt{small\_house} para tareas domésticas, \texttt{bookstore} para escenarios comerciales.
+    \item Lanzamiento del mundo simulado mediante \texttt{roslaunch} con el \texttt{launch file} correspondiente (ej: \texttt{pepper\_gazebo\_plugin\_in\_house\_CPU\_no\_arms.launch}).
+    \item Inicialización de servicios ROS del \texttt{Task\_module} verificando disponibilidad de percepción, navegación, manipulación y habla.
+    \item Configuración de posición inicial del robot mediante \texttt{set\_current\_place} en ubicación predefinida del mapa (típicamente \texttt{"init"}).
+\end{enumerate}
+
+\subsection*{Fase 3: Ejecución controlada en Gazebo}
+
+Con el entorno operativo, la tercera fase procede a la ejecución iterativa del benchmark. Para cada tarea del benchmark:
+\begin{enumerate}
+    \item Reinicio del robot a posición inicial mediante \texttt{set\_current\_place("init")} para garantizar condiciones de partida consistentes.
+    \item Inicialización de un recolector de métricas (\texttt{MetricsCollector}) dedicado a esta ejecución.
+    \item Invocación del método \texttt{agent.run(task\_description)}, que ejecuta la política agentiva invocando herramientas ROS del \texttt{Task\_module} (\texttt{go\_to\_location}, \texttt{find\_object}, \texttt{speak}, etc.) que controlan al robot Pepper virtual en Gazebo.
+    \item Captura automática de: resultado binario (éxito/fallo determinado por criterios específicos de la tarea), número de iteraciones del ciclo agentivo, tiempo transcurrido (incluyendo latencia de simulación física y llamadas al LLM), traza completa de acciones ROS ejecutadas, consumo de tokens (prompt + completion).
+    \item Monitorización de eventos de simulación: confirmación de llegada a destinos mediante retroalimentación de servicios de navegación (\texttt{/navigation\_utilities/simple\_feedback}), detección de colisiones mediante topics de seguridad del robot, verificación de éxito de operaciones de percepción.
+    \item Registro estructurado del resultado incluyendo metadata de tarea (ID, categoría, dificultad), arquitectura evaluada, mundo Gazebo utilizado, traza JSON de herramientas invocadas y eventos críticos de simulación.
+\end{enumerate}
+
+Este ciclo se repite para las 52 tareas del benchmark, produciendo una matriz completa de resultados por arquitectura. El entorno Gazebo permanece activo durante toda la suite de evaluación, garantizando estabilidad de simulación física.
+
+\subsection*{Fase 4: Consolidación de resultados}
+
+Finalmente, al completar todas las ejecuciones individuales, la cuarta fase consolida los datos recolectados. Al finalizar todas las ejecuciones:
+\begin{enumerate}
+    \item Agregación de resultados individuales en estructura JSON con metadata del benchmark.
+    \item Cálculo de estadísticas sumarias: tasa de éxito global, promedios de eficiencia, totales de coste.
+    \item Serialización a archivo con nomenclatura estandarizada: \texttt{benchmark\_<arch>\_<model>.json}.
+    \item Opcionalmente, generación de reporte analítico en Markdown con gráficas comparativas.
+\end{enumerate}
+
+El procedimiento completo se automatiza mediante el script \texttt{run\_benchmark.py}, que acepta parámetros de línea de comandos para configurar arquitectura, suite de tareas, número de contextos y opciones de verbosidad. Esta automatización elimina variabilidad procedural entre ejecuciones y facilita replicación exacta de experimentos.
+
+\section{Métricas y criterios de evaluación}
+\label{sec:metricas}
+
+Establecido el procedimiento experimental, corresponde ahora definir los instrumentos de medición empleados para cuantificar el desempeño observado. El sistema de evaluación captura tres dimensiones complementarias del desempeño agentivo:
+
+\subsection*{Métricas de desempeño}
+
+\paragraph{Tasa de éxito:} Métrica binaria que determina si el objetivo de la tarea fue alcanzado completamente. Se calcula como:
+\[
+\text{Tasa de éxito} = \frac{\text{Número de tareas exitosas}}{\text{Número total de tareas}} \times 100\%
+\]
+
+Un episodio se clasifica como exitoso cuando la traza de ejecución culmina con la acción \texttt{finish()} y el agente reporta explícitamente completitud de la tarea. Esta métrica proporciona la evaluación primaria de efectividad arquitectónica.
+
+\subsection*{Métricas de eficiencia}
+
+Más allá del éxito binario, resulta fundamental cuantificar el costo operacional de alcanzar los objetivos. Las siguientes métricas capturan esta dimensión:
+
+\paragraph{Pasos promedio:} Número medio de iteraciones del bucle decisión-acción requeridas para completar una tarea. Mide la directividad de la estrategia agentiva: valores menores indican planes más concisos.
+\[
+\text{Pasos promedio} = \frac{\sum_{i=1}^{N} \text{pasos}_i}{N}
+\]
+
+\paragraph{Tiempo de ejecución:} Duración total transcurrida desde el inicio hasta la finalización de la tarea, medida en segundos. Incluye latencia de llamadas al LLM y tiempo de procesamiento de herramientas simuladas.
+
+Estas métricas complementan la tasa de éxito al revelar el coste operacional de alcanzar los objetivos, permitiendo identificar arquitecturas que logran eficiencia superior sin sacrificar efectividad.
+
+\subsection*{Métricas de coste computacional}
+
+Además de la eficiencia temporal y de pasos, el estudio cuantifica el costo económico asociado al uso de servicios de LLM:
+
+\paragraph{Tokens consumidos:} Suma de tokens de entrada (prompt) y salida (generación) en todas las llamadas al LLM durante la ejecución de una tarea. Determina directamente el coste económico de operación, dado que los servicios de LLM se facturan por token procesado.
+
+\paragraph{Llamadas al LLM:} Frecuencia de invocaciones al modelo de lenguaje. Arquitecturas con mayor número de llamadas incurren en mayor latencia acumulada, aunque pueden beneficiarse de retroalimentación más frecuente.
+
+El módulo \texttt{MetricsCollector} registra automáticamente estas métricas mediante instrumentación de las llamadas al LLM y cálculo de diferencias temporales. Los datos se estructuran en formato JSON para facilitar análisis posterior mediante scripts de visualización.
+
+\subsection*{Criterios de evaluación}
+
+El análisis comparativo entre arquitecturas considera:
+
+\begin{itemize}
+    \item \textbf{Dominancia de Pareto:} Una arquitectura $A$ domina a $B$ si supera en al menos una métrica sin ser inferior en ninguna otra (ej: mayor tasa de éxito y menor consumo de tokens).
+    
+    \item \textbf{Trade-offs eficiencia-coste:} Identificación de equilibrios donde mayor efectividad requiere mayor inversión computacional, o viceversa.
+    
+    \item \textbf{Robustez contextual:} Varianza de las métricas a través de los múltiples contextos generados. Menor varianza indica mayor estabilidad ante cambios ambientales.
+    
+    \item \textbf{Desempeño por categoría:} Análisis granular que revela fortalezas específicas de cada arquitectura en diferentes tipos de tarea (navegación vs. razonamiento complejo).
+\end{itemize}
+
+\section{Configuraciones de comparación}
+\label{sec:configuraciones}
+
+Definidas las métricas de evaluación, resulta esencial especificar los parámetros experimentales que garantizan equidad en la comparación. Para garantizar comparabilidad justa, todas las arquitecturas operan bajo configuración experimental homogénea:
+
+\subsection*{Parámetros del LLM}
+
+La configuración del modelo de lenguaje subyacente se estandariza mediante los siguientes parámetros:
+
+\begin{itemize}
+    \item \textbf{Modelo:} GPT-4o-mini desplegado en Azure OpenAI (versión API 2024-12-01-preview).
+    \item \textbf{Temperatura:} 0.0 (determinista, elimina variabilidad estocástica en generación).
+    \item \textbf{Límites de tokens:} Máximos por defecto del modelo sin restricciones adicionales.
+    \item \textbf{System prompts:} Estructura XML estandarizada con secciones para objetivo, herramientas disponibles, estado actual y formato de respuesta.
+\end{itemize}
+
+\subsection*{Límites operacionales}
+
+Para prevenir ejecuciones indefinidas sin restringir artificialmente la exploración, se establecen los siguientes límites:
+
+\begin{itemize}
+    \item \textbf{Iteraciones máximas:} 15 para tareas simples, 20 para tareas complejas. Previene bucles infinitos sin restringir artificialmente la exploración.
+    \item \textbf{Intentos por tarea (Reflexion):} Máximo de 3 intentos con reflexión entre cada uno, permitiendo aprendizaje de errores.
+    \item \textbf{Timeout implícito:} Determinado por límite de iteraciones, sin timeout de reloj externo.
+\end{itemize}
+
+\subsection*{Reproducibilidad determinística}
+
+Dada la naturaleza estática de los mundos Gazebo, la reproducibilidad se garantiza mediante:
+
+\begin{itemize}
+    \item Uso del mismo archivo \texttt{.world} para cada tipo de entorno, asegurando geometría y física idénticas entre ejecuciones.
+    \item Posición inicial fija del robot (\texttt{"init"}) al inicio de cada tarea.
+    \item Temperatura 0.0 en el LLM para eliminación de variabilidad estocástica en generación de respuestas.
+    \item Versionado explícito de la API de Azure OpenAI (\texttt{2024-12-01-preview}) para mitigar cambios no documentados del modelo.
+    \item Logs estructurados JSON de cada ejecución con timestamp, versión de código (hash Git) y metadata completa de configuración.
+\end{itemize}
+
+Esta estrategia permite validación independiente de resultados y depuración de comportamientos específicos mediante replay exacto de condiciones experimentales.
+
+\section{Consideraciones éticas y de reproducibilidad}
+\label{sec:etica-reproducibilidad}
+
+Para concluir este capítulo metodológico, resulta pertinente abordar dos dimensiones transversales del diseño experimental: las implicaciones éticas del trabajo y las estrategias implementadas para garantizar reproducibilidad científica.
+
+\subsection*{Aspectos éticos}
+
+Respecto a las consideraciones éticas, cabe señalar que este estudio se desarrolla enteramente en simulación sin participación de usuarios humanos reales, por lo que no requiere aprobación de comité de ética para investigación con sujetos humanos. No obstante, se reconocen las siguientes consideraciones para futura extensión a validación física:
+
+\begin{itemize}
+    \item \textbf{Seguridad en HRI:} Si se implementa en robot físico, deben establecerse protocolos de seguridad que garanticen que las acciones del agente no generen riesgo para personas en proximidad (velocidades limitadas, detección de colisiones, botones de parada de emergencia).
+    
+    \item \textbf{Privacidad:} Cualquier sistema que procese información sobre ubicación de personas o interacciones sociales debe cumplir regulaciones de protección de datos (GDPR en Europa, equivalentes locales).
+    
+    \item \textbf{Transparencia:} Los usuarios humanos deben ser informados cuando interactúan con un agente autónomo basado en IA, clarificando las capacidades y limitaciones del sistema.
+\end{itemize}
+
+\subsection*{Reproducibilidad}
+
+El diseño metodológico prioriza reproducibilidad mediante las siguientes estrategias:
+
+\paragraph{Código abierto:} Como primer pilar de reproducibilidad, el repositorio completo del benchmark se estructura como software libre, incluyendo:
+\begin{itemize}
+    \item Implementaciones de las cuatro arquitecturas en Python.
+    \item Módulo de herramientas simuladas con estado interno determinista.
+    \item Generador de contextos con control de semillas.
+    \item Suite completa de 52 tareas categorizadas.
+    \item Scripts de ejecución automatizada y análisis de resultados.
+\end{itemize}
+
+\paragraph{Documentación técnica:} Complementando el código fuente, el repositorio incluye archivos README detallados con:
+\begin{itemize}
+    \item Instrucciones de instalación de dependencias (Python 3.11+, librerías específicas).
+    \item Ejemplos de comandos para reproducir experimentos específicos.
+    \item Descripción de estructura de archivos de configuración y resultados.
+    \item Guías de extensión para añadir nuevas arquitecturas o tareas.
+\end{itemize}
+
+\paragraph{Trazabilidad de ejecución:} Cada archivo de resultados JSON contiene metadata completa:
+\begin{itemize}
+    \item Identificación de arquitectura, modelo LLM y parámetros de configuración.
+    \item Timestamp de ejecución y versión del código (mediante hash de commit Git).
+    \item Semillas utilizadas para generación de contextos.
+    \item Traza completa de acciones ejecutadas por tarea para análisis post-hoc.
+\end{itemize}
+
+\paragraph{Determinismo configurado:} El uso de temperatura 0.0 en el LLM y control de semillas aleatorias garantiza que, dado el mismo hardware y versión de API, las ejecuciones sean deterministas. Pequeñas variaciones pueden surgir de actualizaciones del modelo por parte del proveedor (Azure OpenAI) pero se mitigan mediante versionado explícito de la API.
+
+\paragraph{Requisitos de plataforma:} El sistema requiere \textbf{Ubuntu 20.04 LTS con ROS Noetic} como plataforma de ejecución obligatoria. ROS Noetic constituye la distribución Long-Term Support (LTS) del \emph{middleware} robótico compatible con Python 3.x, necesaria para la integración con el \texttt{Task\_module}, Gazebo y los servicios de navegación, percepción y manipulación del robot Pepper simulado. Las arquitecturas agentivas implementadas en Python 3.11+ utilizan librerías estándar (requests, openai, numpy, langchain) pero dependen críticamente de la infraestructura ROS para la comunicación con el entorno simulado. Esta dependencia limita la portabilidad a sistemas Linux compatibles con ROS Noetic.
+
+\paragraph{Estrategia de desarrollo modular:} El diseño del benchmark adopta una arquitectura de \textbf{capas desacopladas} que facilita la extensibilidad del sistema. La capa de agentes (políticas ReAct, Plan-Then-Act, Reflexion, Reference) se comunica con la capa de herramientas mediante una interfaz estable basada en servicios ROS estándar. Esta separación de responsabilidades garantiza que las políticas agentivas sean portables entre diferentes plataformas robóticas (Pepper, NAO, TIAGo) que expongan servicios compatibles, sin requerir modificaciones en el código de las arquitecturas.
+
+La capa de herramientas ROS actúa como \emph{abstracción} que oculta la complejidad del hardware subyacente (ya sea simulado en Gazebo o físico), permitiendo que los experimentos mantengan comparabilidad independientemente de la plataforma de ejecución. Esta arquitectura modular además facilita la extensión del benchmark con nuevas herramientas (ej: manipulación de objetos, expresiones faciales) sin alterar el núcleo de las políticas de decisión.

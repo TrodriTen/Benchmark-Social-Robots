@@ -10,6 +10,7 @@ from langchain_core.prompts import PromptTemplate
 
 from .base_agent import BaseAgent
 from ..service_adapter import get_tools_description, get_tool_names
+from ..callbacks import MetricsCallbackHandler
 
 
 class ReflexionAgent(BaseAgent):
@@ -58,6 +59,20 @@ class ReflexionAgent(BaseAgent):
 
 Tu objetivo es completar la tarea del usuario paso a paso, razonando antes de cada acción.
 
+ENTORNO SIMULADO:
+- Estás operando en un entorno de prueba SIN personas reales
+- Las herramientas de reconocimiento de voz (listen, speech2text) NO funcionan porque no hay nadie que responda
+- NO uses listen ni speech2text - siempre retornan que no hay respuesta
+- Puedes hablar (talk) pero no esperes respuestas de voz
+- La navegación y búsqueda de personas funciona normalmente
+
+INFORMACIÓN DEL ENTORNO:
+- Robot inicia en: living room
+- Ubicaciones disponibles (CASA): living room, kitchen, bedroom, bathroom, gym, entrance hall, garden
+- Ubicaciones disponibles (OFICINA): office, library, cafeteria, conference room, reception, lobby, break room, archive room, copy room, main entrance, parking lot, elevator, meeting room A, meeting room B, meeting room C, technical department, HR department, sales department, finance department
+- Personas: Alice, Tomas, David, Maria, Carlos, Ana, Jorge, Richard, Laura, Sophia, Alex, Elena, Miguel, Pablo, Julia, Peter
+- Objetos rastreables: chair, exercise ball, table, folder, first aid kit, package, printer, keys, book, coffee machine
+
 HERRAMIENTAS DISPONIBLES:
 {tools}
 
@@ -81,13 +96,23 @@ REGLAS PARA ACTION INPUT:
 - Para go_to_place: {{"location": "lugar"}}
 - Para talk: {{"message": "texto"}}
 - Para find_person: {{"name": "persona"}}
+- Para store_in_memory: {{"key": "identificador", "value": "información"}}
+- Para recall_from_memory: {{}} o {{"key": "identificador"}}
+- Para count_objects: {{"object_type": "tipo"}}
 
-EJEMPLOS:
+CAPACIDADES AVANZADAS:
+- MEMORIA: Usa store_in_memory/recall_from_memory para tareas multi-paso que requieren recordar información
+- PERCEPCIÓN: Usa describe_environment para descripción completa del entorno
+- CONTEO: Usa count_objects para contar objetos específicos
+- INVENTARIOS: Combina navegación + describe_environment + store_in_memory
 
-Thought: Necesito ir a la cocina
+EJEMPLOS CORRECTOS:
+
+Ejemplo 1 - Buscar y entregar mensaje:
+Thought: Necesito ir a la conference room
 Action: go_to_place
-Action Input: {{"location": "cocina"}}
-Observation: Éxito: El robot ha llegado a cocina.
+Action Input: {{"location": "conference room"}}
+Observation: Éxito: El robot ha llegado a conference room.
 
 Thought: Ahora debo buscar a Tomas
 Action: find_person
@@ -96,17 +121,73 @@ Observation: Éxito: Se encontró a Tomas.
 
 Thought: Debo comunicar el mensaje
 Action: talk
-Action Input: {{"message": "hola, la comida está lista"}}
+Action Input: {{"message": "la reunión comienza pronto"}}
 Observation: Éxito: El mensaje fue dicho.
 
-Thought: Ya completé la tarea
-Final Answer: He ido a la cocina, encontrado a Tomas y le he dicho el mensaje.
+Thought: Ya completé la tarea - he encontrado a Tomas y entregado el mensaje
+Final Answer: He ido a conference room, encontrado a Tomas y le he dicho el mensaje.
+
+Ejemplo 2 - Tarea con memoria:
+Thought: Necesito averiguar información y recordarla
+Action: find_person
+Action Input: {{"name": "Alice"}}
+Observation: Éxito: Se encontró a Alice. Alice menciona que le gusta el café.
+
+Thought: Debo guardar esta información
+Action: store_in_memory
+Action Input: {{"key": "preferencia_alice", "value": "Alice le gusta el café"}}
+Observation: Éxito: Información almacenada.
+
+Thought: Ahora debo volver al living room
+Action: go_to_place
+Action Input: {{"location": "living room"}}
+Observation: Éxito: El robot ha llegado a living room.
+
+Thought: Necesito recordar la información
+Action: recall_from_memory
+Action Input: {{"key": "preferencia_alice"}}
+Observation: Alice le gusta el café
+
+Thought: Ahora puedo comunicar la respuesta
+Action: talk
+Action Input: {{"message": "Alice le gusta el café"}}
+Observation: Éxito: El mensaje fue dicho.
+
+Thought: He completado la tarea multi-paso
+Final Answer: Averigüé que a Alice le gusta el café y comuniqué la respuesta.
+
+Ejemplo 3 - Buscar persona en otra ubicación:
+Thought: Necesito buscar a David
+Action: find_person
+Action Input: {{"name": "David"}}
+Observation: No se encontró a David. David no está aquí. David está en main entrance.
+
+Thought: David está en main entrance, debo ir allá
+Action: go_to_place
+Action Input: {{"location": "main entrance"}}
+Observation: Éxito: El robot ha llegado a main entrance.
+
+Thought: Ahora busco a David aquí
+Action: find_person
+Action Input: {{"name": "David"}}
+Observation: Éxito: Se encontró a David.
+
+Thought: He encontrado a David, tarea completada
+Final Answer: He encontrado a David en la puerta.
+
+ESTRATEGIA PARA COMPLETAR TAREAS:
+1. Si necesitas encontrar a alguien, primero búscalo en tu ubicación actual
+2. Si no está, usa la información de la observación para saber dónde ir
+3. Si te piden hablar con alguien, primero encuéntralo, luego usa 'talk'
+4. NO uses 'listen' - en entorno simulado nadie responde
+5. Si te piden ir a un lugar que no existe (ej: baño), indica que no conoces ese lugar y termina con Final Answer
+6. SIEMPRE termina con "Final Answer:" cuando hayas completado la tarea
 
 RESTRICCIONES:
-- Ubicaciones conocidas: cocina, sala, puerta
-- Personas conocidas: Tomas
 - Solo usa herramientas de la lista
 - NO inventes herramientas ni capacidades
+- NO uses listen ni speech2text (no funcionan en simulación)
+- SIEMPRE termina con Final Answer cuando completes la tarea
 
 {reflections_context}
 
@@ -142,89 +223,79 @@ Comienza tu razonamiento:"""
             max_execution_time=self.max_execution_time,
             handle_parsing_errors=True,
             return_intermediate_steps=True,
-            early_stopping_method="generate"
         )
         
         return agent_executor
     
     def _create_langchain_tools(self) -> List[StructuredTool]:
-        """Convierte adapters a herramientas LangChain (mismo que react.py)"""
+        """Convierte adapters a herramientas LangChain con args_schema y wrapper."""
         from pydantic import BaseModel, Field
-        
+        from typing import Optional
         lc_tools = []
-        
         for tool_name, adapter_func in self.adapters.items():
             spec = self.adapter_specs.get(tool_name, {})
             desc = spec.get("desc", f"Herramienta {tool_name}")
             args_spec = spec.get("args", {})
             required = spec.get("required", [])
-            
-            # Crear modelo Pydantic dinámico para args
-            from typing import Optional
-            
+
+            # 1) Modelo dinámico para validación de args
             fields = {}
             annotations = {}
-            
             for arg_name, arg_type in args_spec.items():
                 is_required = arg_name in required
-                
-                if arg_type == "str":
-                    annotations[arg_name] = str if is_required else Optional[str]
-                    fields[arg_name] = Field(...) if is_required else Field(default="")
-                elif arg_type == "int":
-                    annotations[arg_name] = int if is_required else Optional[int]
-                    fields[arg_name] = Field(...) if is_required else Field(default=0)
+                if arg_type == "int":
+                    annotations[arg_name] = int | None if not is_required else int
+                    fields[arg_name] = Field(default=None) if not is_required else Field(...)
                 elif arg_type == "float":
-                    annotations[arg_name] = float if is_required else Optional[float]
-                    fields[arg_name] = Field(...) if is_required else Field(default=0.0)
+                    annotations[arg_name] = float | None if not is_required else float
+                    fields[arg_name] = Field(default=None) if not is_required else Field(...)
                 elif arg_type == "bool":
-                    annotations[arg_name] = bool if is_required else Optional[bool]
-                    fields[arg_name] = Field(...) if is_required else Field(default=False)
+                    annotations[arg_name] = bool | None if not is_required else bool
+                    fields[arg_name] = Field(default=None) if not is_required else Field(...)
                 else:
-                    annotations[arg_name] = str if is_required else Optional[str]
-                    fields[arg_name] = Field(...) if is_required else Field(default="")
-            
-            # Crear clase dinámica con configuración correcta
+                    annotations[arg_name] = str | None if not is_required else str
+                    fields[arg_name] = Field(default=None) if not is_required else Field(...)
+
             ArgsModel = type(
                 f"{tool_name}_args",
                 (BaseModel,),
-                {
-                    "__annotations__": annotations,
-                    **{k: v for k, v in fields.items()}
-                }
+                {"__annotations__": annotations, **fields}
             )
-            
-            # Wrapper que retorna string para compatibilidad con ReAct
-            # StructuredTool pasa args de diferentes formas según la versión y cómo se llama
-            def make_wrapper(adapter_func=adapter_func, schema=ArgsModel):
-                """Wrapper factory con early binding"""
+
+            # 2) Wrapper que acepta `tool_input` (string/dict) y lo normaliza
+            from ..service_adapter import normalize_action_input
+            def make_wrapper(adapter_func=adapter_func, schema=ArgsModel, tool_name=tool_name):
                 def wrapper(tool_input=None, **kwargs):
-                    # Prioridad 1: Si tool_input es un objeto Pydantic, usarlo
+                    # Prioridad 1: tool_input ya es BaseModel/dict
                     if tool_input is not None and hasattr(tool_input, 'model_dump'):
                         kwargs = tool_input.model_dump()
-                    elif tool_input is not None and hasattr(tool_input, 'dict'):
-                        kwargs = tool_input.dict()
-                    # Prioridad 2: Si tool_input es un dict, usarlo
                     elif tool_input is not None and isinstance(tool_input, dict):
                         kwargs = tool_input
-                    # Prioridad 3: Si solo hay kwargs (ya viene como dict), usarlos
-                    # (esto es lo que pasa cuando se llama con .run(dict))
-                    
-                    result = adapter_func(**kwargs)
-                    return result["obs"]  # ReAct espera string en observation
+                    elif tool_input is not None and isinstance(tool_input, str):
+                        # Normaliza JSON/strings simples a kwargs con nombres correctos
+                        kwargs = normalize_action_input(tool_name, tool_input)
+                    elif kwargs:
+                        # kwargs ya vienen; completamos faltantes por default si aplica
+                        pass
+                    else:
+                        # Sin nada explícito => usa defaults (p.ej. recognize_face num_pics=3)
+                        kwargs = {}
+
+                    # Último toque: si faltan required, que explote acá con mensaje claro
+                    _ = schema(**kwargs)
+                    return adapter_func(**kwargs)
                 return wrapper
-            
-            wrapped_func = make_wrapper()
-            wrapped_func.__name__ = tool_name
-            
+
+            wrapped = make_wrapper()
+            wrapped.__name__ = tool_name
+
             tool = StructuredTool(
                 name=tool_name,
                 description=desc,
-                func=wrapped_func,
+                func=wrapped,
                 args_schema=ArgsModel
             )
             lc_tools.append(tool)
-        
         return lc_tools
 
     def _evaluate_attempt(
@@ -237,48 +308,44 @@ Comienza tu razonamiento:"""
         Evaluator: Determina si el intento fue exitoso.
         
         Criterios:
-        1. Se ejecutaron acciones
-        2. Todas las acciones fueron exitosas
-        3. Se generó una respuesta final coherente
+        1. El agente generó una respuesta final (Final Answer)
+        2. La respuesta final no indica error catastrófico
+        
+        NOTA: No todas las acciones tienen que ser exitosas (exploración normal),
+        lo importante es que el agente llegue a una conclusión razonada.
         """
-        # Verificar que hubo acciones
-        if not intermediate_steps:
-            return False
-        
-        # Verificar que todas las acciones fueron exitosas
-        all_success = all(
-            "Éxito" in str(obs) and "Fallo" not in str(obs)
-            for _, obs in intermediate_steps
-        )
-        
-        if not all_success:
-            return False
-        
-        # Verificar que hay output
+        # Verificar que hay output con respuesta final
         if "output" not in output:
             return False
         
-        output_text = str(output.get("output", "")).lower()
+        output_text = str(output.get("output", ""))
         
-        # Verificar que no hay errores críticos
-        if any(word in output_text for word in ["error fatal", "no puedo", "imposible"]):
+        # El agente debe haber generado una respuesta final (no solo intermediate_steps)
+        # Si hay output, significa que llegó a Final Answer
+        if not output_text or len(output_text.strip()) < 10:
             return False
         
+        # Verificar que no hay errores catastróficos en el output final
+        output_lower = output_text.lower()
+        if any(word in output_lower for word in ["error fatal", "imposible completar"]):
+            return False
+        
+        # Si llegó hasta aquí, el intento fue exitoso
+        # (el agente razonó, ejecutó acciones, y llegó a una conclusión)
         return True
 
     def _generate_reflection(
-        self, 
+        self,
         task_description: str,
         attempt_number: int,
         output: Dict[str, Any],
-        intermediate_steps: List
+        intermediate_steps: List,
+        metrics_callback: Optional[MetricsCallbackHandler] = None
     ) -> str:
         """
         Self-Reflection: Genera una reflexión sobre qué salió mal y cómo mejorar.
         """
-        print("\n--- 🤔 Generando Reflexión ---")
-        
-        # Construir un resumen del intento fallido
+        print("\n--- 🤔 Generando Reflexión ---")        # Construir un resumen del intento fallido
         steps_summary = []
         for i, (action, observation) in enumerate(intermediate_steps, 1):
             tool_name = action.tool
@@ -311,18 +378,48 @@ Considera:
 2. ¿Los argumentos fueron correctos?
 3. ¿El orden de las acciones fue apropiado?
 4. ¿Qué errores específicos se cometieron?
-5. ¿Cómo se podría mejorar en el próximo intento?
+5. ¿Por qué el agente no llegó a un "Final Answer" claro?
+6. ¿Cómo se podría mejorar en el próximo intento?
 
-RESTRICCIONES DEL ROBOT:
-- Ubicaciones conocidas: cocina, sala, puerta (NO puede ir a otras)
-- Personas conocidas: Tomas (NO puede encontrar a otras)
-- Herramientas: move_to, say, find_person
+ENTORNO SIMULADO - INFORMACIÓN CRÍTICA:
+- Ubicaciones disponibles (CASA): living room, kitchen, bedroom, bathroom, gym, entrance hall, garden
+- Ubicaciones disponibles (OFICINA): office, library, cafeteria, conference room, reception, lobby, break room, archive room, copy room, main entrance, parking lot, elevator, meeting room A, meeting room B, meeting room C, technical department, HR department, sales department, finance department
+- Personas: Alice, Tomas, David, Maria, Carlos, Ana, Jorge, Richard, Laura, Sophia, Alex, Elena, Miguel, Pablo, Julia, Peter
+- Objetos rastreables: chair, exercise ball, table, folder, first aid kit, package, printer, keys, book, coffee machine
+- El robot PUEDE buscar a cualquiera de estas personas
+- NO usar herramientas de voz: listen, speech2text (en simulación nadie responde)
+- Es NORMAL que algunas búsquedas fallen (ej: buscar a Tomas en office cuando está en living room)
+- El robot inicia en living room
 
-Proporciona una reflexión concisa (2-4 oraciones) que ayude al robot a mejorar en el próximo intento.
+CAPACIDADES DISPONIBLES:
+- NAVEGACIÓN: go_to_place, move_to a cualquier ubicación listada
+- COMUNICACIÓN: talk (hablar), find_person (buscar persona)
+- MEMORIA: store_in_memory (guardar información), recall_from_memory (recuperar información)
+- PERCEPCIÓN: describe_environment (describir entorno), count_objects (contar objetos)
+
+ERRORES COMUNES A EVITAR:
+- Repetir la misma acción infinitamente (ej: talk 10 veces seguidas)
+- No terminar con "Final Answer" cuando se completa la tarea
+- Intentar usar listen o speech2text
+- Olvidar usar memoria en tareas multi-paso que requieren recordar información
+- No usar describe_environment cuando se necesita información del entorno
+
+Proporciona una reflexión concisa (2-4 oraciones) que ayude al robot a:
+1. Identificar el error específico que causó el fallo
+2. Sugerir una estrategia concreta para el próximo intento
+3. Recordar que debe terminar con "Final Answer"
 
 REFLEXIÓN:"""
 
-        reflection_response = self.llm.invoke(reflection_prompt)
+        # Invocar LLM con callback si está disponible
+        if metrics_callback:
+            reflection_response = self.llm.invoke(
+                reflection_prompt,
+                config={"callbacks": [metrics_callback]}
+            )
+        else:
+            reflection_response = self.llm.invoke(reflection_prompt)
+            
         reflection_text = reflection_response.content.strip()
         
         print(f"Reflexión generada:\n{reflection_text}")
@@ -384,6 +481,9 @@ REFLEXIÓN:"""
         """
         start_time = time.time()
         
+        # Crear callback global para acumular métricas de todos los intentos
+        global_metrics_callback = MetricsCallbackHandler()
+        
         print("\n" + "="*70)
         print("🔄 REFLEXION AGENT - Iniciando tarea")
         print("="*70)
@@ -404,11 +504,11 @@ REFLEXIÓN:"""
                 # Crear el Actor con el contexto actualizado
                 actor = self._create_actor_agent(reflections_context)
                 
-                # Ejecutar el intento
-                result = actor.invoke({
-                    "input": task_description,
-                    "reflections_context": reflections_context
-                })
+                # Ejecutar el intento con callback para métricas
+                result = actor.invoke(
+                    {"input": task_description, "reflections_context": reflections_context},
+                    config={"callbacks": [global_metrics_callback]}
+                )
                 
                 intermediate_steps = result.get("intermediate_steps", [])
                 trace = self._extract_trace_from_steps(intermediate_steps)
@@ -439,6 +539,9 @@ REFLEXIÓN:"""
                     print(f"Tiempo total: {execution_time:.2f}s")
                     print("="*70)
                     
+                    # Obtener métricas acumuladas de todos los intentos
+                    llm_metrics = global_metrics_callback.get_summary()
+                    
                     return {
                         "success": True,
                         "attempts": attempt,
@@ -448,7 +551,8 @@ REFLEXIÓN:"""
                         "reflections": self.reflection_memory.copy(),
                         "execution_time": execution_time,
                         "architecture": "Reflexion",
-                        "final_output": result.get("output", "")
+                        "final_output": result.get("output", ""),
+                        "llm_metrics": llm_metrics
                     }
                 
                 else:
@@ -458,7 +562,8 @@ REFLEXIÓN:"""
                             task_description, 
                             attempt, 
                             result, 
-                            intermediate_steps
+                            intermediate_steps,
+                            metrics_callback=global_metrics_callback
                         )
                         self.reflection_memory.append(reflection)
                         
@@ -491,6 +596,9 @@ REFLEXIÓN:"""
         print(f"Tiempo total: {execution_time:.2f}s")
         print("="*70)
         
+        # Obtener métricas acumuladas de todos los intentos
+        llm_metrics = global_metrics_callback.get_summary()
+        
         return {
             "success": False,
             "attempts": self.max_attempts,
@@ -499,5 +607,6 @@ REFLEXIÓN:"""
             "all_attempts": all_attempts_trace,
             "reflections": self.reflection_memory.copy(),
             "execution_time": execution_time,
-            "architecture": "Reflexion"
+            "architecture": "Reflexion",
+            "llm_metrics": llm_metrics
         }

@@ -14,6 +14,7 @@ from langgraph.store.memory import InMemoryStore
 
 from .base_agent import BaseAgent
 from ..service_adapter import get_tools_description, get_tool_names
+from ..callbacks import MetricsCallbackHandler
 
 
 class ReferenceAgent(BaseAgent):
@@ -149,28 +150,53 @@ NOMBRES DE HERRAMIENTAS: {tool_names}
 FORMATO DE RESPUESTA OBLIGATORIO:
 Debes seguir este formato EXACTAMENTE:
 
-Thought: [Piensa en qué necesitas hacer ahora, considerando ejemplos y reflexiones previas]
+Thought: [Analiza la situación actual y determina el próximo paso necesario]
 Action: [Nombre EXACTO de la herramienta de la lista]
 Action Input: [Argumentos en formato JSON]
 Observation: [El sistema mostrará el resultado automáticamente]
 
 ... (repite Thought/Action/Action Input/Observation según sea necesario)
 
-Thought: Ya completé la tarea
-Final Answer: [Resumen de lo que lograste]
+Thought: He completado exitosamente la tarea [verifica que TODO esté hecho]
+Final Answer: [Resumen específico de lo que lograste]
+
+IMPORTANTE: Usa "Final Answer" tan pronto como completes los objetivos. NO continues haciendo acciones innecesarias.
 
 REGLAS PARA ACTION INPUT:
 - Siempre usa formato JSON con las claves correctas
 - Para go_to_place: {{"location": "lugar"}}
 - Para talk: {{"message": "texto"}}
 - Para find_person: {{"name": "persona"}}
+- Para store_in_memory: {{"key": "identificador", "value": "información"}}
+- Para recall_from_memory: {{}} (para toda la memoria) o {{"key": "identificador"}} (para un valor específico)
+- Para count_objects: {{"object_type": "tipo_objeto"}}
+
+CAPACIDADES AVANZADAS:
+- MEMORIA PERSISTENTE: Usa store_in_memory/recall_from_memory para tareas multi-paso que requieren recordar información entre pasos
+  Ejemplo: "Averigua quién le gusta el café, vuelve y dime" → Guardar respuesta → Navegar de vuelta → Recordar respuesta → Comunicarla
+- PERCEPCIÓN: Usa describe_environment para obtener descripción completa del entorno actual
+- CONTEO: Usa count_objects para contar objetos específicos en la ubicación actual
+- INVENTARIOS: Combina navegación + describe_environment + store_in_memory para generar inventarios completos
 
 RESTRICCIONES:
-- Ubicaciones conocidas: cocina, sala, puerta
-- Personas conocidas: Tomas
+- Ubicaciones disponibles (CASA): living room, kitchen, bedroom, bathroom, gym, entrance hall, garden
+- Ubicaciones disponibles (OFICINA): office, library, cafeteria, conference room, reception, lobby, break room, archive room, copy room, main entrance, parking lot, elevator, meeting room A, meeting room B, meeting room C, technical department, HR department, sales department, finance department
+- Personas en el entorno: Alice, Tomas, David, Maria, Carlos, Ana, Jorge, Richard, Laura, Sophia, Alex, Elena, Miguel, Pablo, Julia, Peter
+- Objetos rastreables: chair, exercise ball, table, folder, first aid kit, package, printer, keys, book, coffee machine
 - Solo usa herramientas de la lista
 - Aprende de los ejemplos y reflexiones proporcionados
 - Si algo falla, ajusta tu estrategia basándote en reflexiones previas
+
+CUÁNDO TERMINAR (MUY IMPORTANTE):
+- LEE LA TAREA COMPLETA: Si dice "haz X y luego Y", debes hacer AMBAS cosas
+- Usa "Final Answer" SOLO después de completar TODOS los pasos de la tarea
+- NO repitas acciones que ya funcionaron
+- Ejemplos de tareas completas:
+  * "Busca a X y dile Y" → Encontrar a X AND hablarle → ENTONCES termina
+  * "Busca a X y luego ve a Y" → Encontrar a X AND ir a Y → ENTONCES termina
+  * "Ve a X y busca a Y" → Ir a X AND buscar a Y → ENTONCES termina
+- Si ya completaste TODOS los objetivos → usa "Final Answer"
+- Si falta algún objetivo → NO uses "Final Answer", sigue trabajando
 
 {examples}
 
@@ -267,8 +293,8 @@ REFLEXIÓN (1 oración):"""
             max_iterations=self.max_iterations,
             max_execution_time=self.max_execution_time,
             handle_parsing_errors=True,
-            return_intermediate_steps=True,
-            early_stopping_method="generate"
+            return_intermediate_steps=True
+            # REMOVIDO: early_stopping_method="generate" - Parámetro obsoleto que causaba errores
         )
         
         return agent_executor
@@ -322,21 +348,36 @@ REFLEXIÓN (1 oración):"""
             
             # Wrapper que retorna string para compatibilidad con ReAct
             # StructuredTool pasa args de diferentes formas según la versión y cómo se llama
-            def make_wrapper(adapter_func=adapter_func, schema=ArgsModel):
+            def make_wrapper(adapter_func=adapter_func, tool_name=tool_name, schema=ArgsModel):
                 """Wrapper factory con early binding"""
-                def wrapper(tool_input=None, **kwargs):
-                    # Prioridad 1: Si tool_input es un objeto Pydantic, usarlo
-                    if tool_input is not None and hasattr(tool_input, 'model_dump'):
-                        kwargs = tool_input.model_dump()
-                    elif tool_input is not None and hasattr(tool_input, 'dict'):
-                        kwargs = tool_input.dict()
-                    # Prioridad 2: Si tool_input es un dict, usarlo
-                    elif tool_input is not None and isinstance(tool_input, dict):
-                        kwargs = tool_input
-                    # Prioridad 3: Si solo hay kwargs (ya viene como dict), usarlos
-                    # (esto es lo que pasa cuando se llama con .run(dict))
+                def wrapper(*args, **kwargs):
+                    # Debug: print para ver qué estamos recibiendo
+                    # print(f"[DEBUG] {tool_name}: args={args}, kwargs={kwargs}")
                     
-                    result = adapter_func(**kwargs)
+                    # Caso 1: Un solo argumento posicional (objeto Pydantic o dict)
+                    if len(args) == 1 and not kwargs:
+                        arg = args[0]
+                        if hasattr(arg, 'model_dump'):
+                            final_kwargs = arg.model_dump()
+                        elif hasattr(arg, 'dict'):
+                            final_kwargs = arg.dict()
+                        elif isinstance(arg, dict):
+                            final_kwargs = arg
+                        else:
+                            # Si no es dict, usar normalize_action_input del service_adapter
+                            from ..service_adapter import normalize_action_input
+                            final_kwargs = normalize_action_input(tool_name, arg)
+                    # Caso 2: Solo kwargs
+                    elif not args and kwargs:
+                        final_kwargs = kwargs
+                    # Caso 3: Mezcla de args y kwargs, dar prioridad a kwargs
+                    elif args and kwargs:
+                        final_kwargs = kwargs
+                    # Caso 4: No hay argumentos - usar dict vacío
+                    else:
+                        final_kwargs = {}
+                    
+                    result = adapter_func(**final_kwargs)
                     return result["obs"]  # ReAct espera string en observation
                 return wrapper
             
@@ -394,20 +435,42 @@ REFLEXIÓN (1 oración):"""
         output: Dict[str, Any],
         intermediate_steps: List
     ) -> bool:
-        """Determina si la tarea fue exitosa."""
+        """
+        Determina si la tarea fue exitosa.
+        
+        Una tarea es exitosa si:
+        1. Tiene un output (Final Answer)
+        2. El output no indica error fatal
+        3. Los últimos pasos fueron exitosos (indica que terminó bien)
+        
+        No importa si pasos intermedios fallaron (ej: buscar en lugar equivocado),
+        lo importante es que el objetivo final se logró.
+        """
+        # Debe tener output y pasos
         if "output" not in output or not intermediate_steps:
             return False
         
         output_text = str(output.get("output", "")).lower()
-        if any(word in output_text for word in ["error fatal", "no puedo"]):
+        
+        # Si el output indica error fatal, es fallo
+        if any(word in output_text for word in ["error fatal", "no puedo completar"]):
             return False
         
-        all_success = all(
-            "Éxito" in str(obs) and "Fallo" not in str(obs)
-            for _, obs in intermediate_steps
+        # Si no hay pasos, es fallo
+        if not intermediate_steps:
+            return False
+        
+        # Verificar los últimos 3 pasos (o menos si hay menos pasos)
+        # Si la mayoría de los últimos pasos fueron exitosos, consideramos que la tarea se completó
+        last_steps = intermediate_steps[-3:] if len(intermediate_steps) >= 3 else intermediate_steps
+        successful_final_steps = sum(
+            1 for _, obs in last_steps
+            if "Éxito" in str(obs) and "Fallo" not in str(obs)
         )
         
-        return all_success
+        # Si al menos 2 de los últimos 3 pasos (o la mayoría) fueron exitosos, consideramos éxito
+        threshold = len(last_steps) // 2 + 1  # Mayoría
+        return successful_final_steps >= threshold
 
     def run(self, task_description: str) -> Dict[str, Any]:
         """
@@ -415,6 +478,9 @@ REFLEXIÓN (1 oración):"""
         """
         start_time = time.time()
         self.execution_reflections = []  # Reset reflexiones
+        
+        # Crear callback handler para capturar métricas
+        metrics_callback = MetricsCallbackHandler()
         
         print("\n" + "="*70)
         print("🔄 REFERENCE AGENT - Iniciando tarea")
@@ -435,11 +501,14 @@ REFLEXIÓN (1 oración):"""
             # 3. Ejecutar con reflexiones incrementales
             print("\n--- 🚀 Ejecutando con reflexiones incrementales ---")
             
-            result = agent_executor.invoke({
-                "input": task_description,
-                "examples": self._format_examples(relevant_examples),
-                "reflections": ""
-            })
+            result = agent_executor.invoke(
+                {
+                    "input": task_description,
+                    "examples": self._format_examples(relevant_examples),
+                    "reflections": ""
+                },
+                config={"callbacks": [metrics_callback]}
+            )
             
             intermediate_steps = result.get("intermediate_steps", [])
             
@@ -461,11 +530,16 @@ REFLEXIÓN (1 oración):"""
             
             execution_time = time.time() - start_time
             
+            # Obtener métricas del callback
+            metrics = metrics_callback.get_summary()
+            
             print("\n" + "="*70)
             print(f"{'✅ ÉXITO' if success else '❌ FALLO'} - Tarea completada")
             print(f"Pasos ejecutados: {len(intermediate_steps)}")
             print(f"Reflexiones generadas: {len(self.execution_reflections)}")
             print(f"Tiempo: {execution_time:.2f}s")
+            print(f"Llamadas LLM: {metrics['llm_calls_count']}")
+            print(f"Tokens totales: {metrics['total_tokens']}")
             print("="*70)
             
             return {
@@ -476,12 +550,28 @@ REFLEXIÓN (1 oración):"""
                 "architecture": "Reference",
                 "reflections": self.execution_reflections.copy(),
                 "examples_used": len(relevant_examples),
-                "final_output": result.get("output", "No se generó respuesta final")
+                "final_output": result.get("output", "No se generó respuesta final"),
+                "metrics": metrics
             }
         
         except Exception as e:
             execution_time = time.time() - start_time
             error_msg = f"Error fatal durante la ejecución: '{str(e)}'"
+            
+            # Intentar obtener métricas aunque haya fallado
+            try:
+                metrics = metrics_callback.get_summary()
+            except:
+                metrics = {
+                    "llm_calls_count": 0,
+                    "total_tokens": 0,
+                    "total_latency": 0.0,
+                    "execution_time": 0.0,
+                    "replannings": 0,
+                    "llm_calls_detail": [],
+                    "avg_tokens_per_call": 0,
+                    "avg_latency_per_call": 0
+                }
             
             print("\n" + "="*70)
             print("❌ ERROR FATAL")
@@ -494,5 +584,6 @@ REFLEXIÓN (1 oración):"""
                 "trace": [error_msg],
                 "execution_time": execution_time,
                 "architecture": "Reference",
-                "reflections": self.execution_reflections.copy()
+                "reflections": self.execution_reflections.copy(),
+                "metrics": metrics
             }

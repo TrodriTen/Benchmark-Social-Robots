@@ -4,6 +4,197 @@ import time
 
 
 # ============================================================================
+# SIMULACIÓN DE ENTORNO - Estado simulado del robot y entorno
+# ============================================================================
+
+class SimulatedEnvironment:
+    """Simula el estado del entorno para respuestas consistentes"""
+    
+    def __init__(self):
+        # Ubicación inicial del robot
+        self.current_location = "living room"
+        self.initial_location = "living room"
+        
+        # Ubicaciones disponibles (ampliado para tareas complejas)
+        self.available_locations = [
+            # Casa
+            "living room", "kitchen", "bedroom", "bathroom", "gym", 
+            "dinner table", "sofa", "entrance", "corridor",
+            # Oficina
+            "office", "library", "garden", "cafeteria", "conference room",
+            "reception", "lobby", "break room", "archive room", "copy room",
+            "main entrance", "parking lot", "elevator",
+            "meeting room A", "meeting room B", "meeting room C",
+            "marketing department", "sales department", "development department"
+        ]
+        
+        # Personas disponibles en el entorno simulado
+        self.available_people = [
+            "Alice", "Tomas", "David", "Maria", "Carlos", "Ana", "Jorge",
+            "Richard", "Laura", "Sophia", "Alex", "Elena", "Miguel", "Pablo",
+            "Julia", "Peter"
+        ]
+        
+        # Ubicaciones por defecto de personas (puede ser modificado)
+        self.people_locations = {
+            # Personas casa
+            "Alice": "kitchen",
+            "Tomas": "living room",
+            "David": "entrance",
+            "Maria": "kitchen",
+            "Peter": "gym",
+            # Personas oficina
+            "Carlos": "kitchen",
+            "Ana": "library",
+            "Jorge": "garden",
+            "Richard": "office",
+            "Laura": "library",
+            "Sophia": "break room",
+            "Alex": "cafeteria",
+            "Elena": "conference room",
+            "Miguel": "cafeteria",
+            "Pablo": "office",
+            "Julia": "reception"
+        }
+        
+        # Objetos en el entorno
+        self.objects_locations = {
+            # Casa
+            "chair": "garden",
+            "exercise ball": "gym",
+            "table": "cafeteria",
+            "sofa": "living room",
+            # Oficina
+            "folder": "archive room",
+            "first aid kit": "corridor",
+            "package": "main entrance",
+            "printer": "copy room",
+            "keys": "office",
+            "book": "library",
+            "coffee machine": "cafeteria"
+        }
+        
+        # Memoria del robot (para tareas complejas)
+        self.memory = {}
+        
+    def find_person_at_location(self, target_person: str = None):
+        """Busca una persona en la ubicación actual del robot"""
+        people_here = [person for person, location in self.people_locations.items() 
+                      if location == self.current_location]
+        
+        if not people_here:
+            return None, f"No hay nadie en {self.current_location}"
+            
+        if target_person and target_person in people_here:
+            return target_person, f"Se encontró a {target_person} en {self.current_location}"
+        elif target_person and target_person not in people_here:
+            actual_location = self.people_locations.get(target_person, "desconocida")
+            if actual_location == "desconocida":
+                return None, f"No se conoce la ubicación de {target_person}"
+            return None, f"{target_person} no está aquí. {target_person} está en {actual_location}"
+        else:
+            # Si no especifica persona, devolver la primera disponible
+            found_person = people_here[0]
+            return found_person, f"Se encontró a {found_person} en {self.current_location}"
+    
+    def move_to_location(self, location: str):
+        """Simula movimiento del robot"""
+        # Normalizar nombre (espacios, minúsculas)
+        location_normalized = location.lower().strip()
+        
+        # Buscar coincidencia flexible
+        for available_loc in self.available_locations:
+            if location_normalized in available_loc.lower() or available_loc.lower() in location_normalized:
+                self.current_location = available_loc
+                return True, f"Robot se movió a {available_loc}"
+        
+        # No encontrado
+        return False, f"Ubicación '{location}' no conocida. No puedo ir a lugares que no conozco."
+    
+    def find_object(self, object_name: str):
+        """Busca un objeto en la ubicación actual"""
+        objects_here = [obj for obj, location in self.objects_locations.items() 
+                       if location == self.current_location]
+        
+        if not objects_here:
+            return None, f"No se encontraron objetos en {self.current_location}"
+        
+        # Búsqueda flexible
+        object_normalized = object_name.lower().strip()
+        for obj in objects_here:
+            if object_normalized in obj.lower() or obj.lower() in object_normalized:
+                return obj, f"Se encontró {obj} en {self.current_location}"
+        
+        return None, f"No se encontró '{object_name}' en {self.current_location}"
+    
+    def store_memory(self, key: str, value: Any):
+        """Almacena información en memoria"""
+        self.memory[key] = value
+        return f"Información almacenada: {key}"
+    
+    def recall_memory(self, key: str = None):
+        """Recupera información de memoria"""
+        if key:
+            return self.memory.get(key, f"No hay información almacenada con clave '{key}'")
+        else:
+            # Retornar toda la memoria
+            if not self.memory:
+                return "La memoria está vacía"
+            return str(self.memory)
+    
+    def describe_location(self):
+        """Describe la ubicación actual con personas y objetos"""
+        people_here = [person for person, loc in self.people_locations.items() if loc == self.current_location]
+        objects_here = [obj for obj, loc in self.objects_locations.items() if loc == self.current_location]
+        
+        description = f"Estoy en {self.current_location}. "
+        
+        if people_here:
+            description += f"Veo a: {', '.join(people_here)}. "
+        else:
+            description += "No hay personas aquí. "
+        
+        if objects_here:
+            description += f"Objetos visibles: {', '.join(objects_here)}."
+        else:
+            description += "No veo objetos notables."
+        
+        return description
+    
+    def reset_to_initial(self):
+        """Resetea el robot a ubicación inicial"""
+        self.current_location = self.initial_location
+        self.memory.clear()
+        return f"Robot regresó a {self.initial_location}"
+    
+    def apply_world_state(self, world_state):
+        """
+        Aplica un WorldState al entorno simulado.
+        
+        Args:
+            world_state: Instancia de WorldState del world_state_generator
+        """
+        self.current_location = world_state.robot_location
+        self.initial_location = world_state.robot_location
+        self.available_locations = world_state.available_locations.copy()
+        self.people_locations = world_state.people_locations.copy()
+        self.objects_locations = world_state.objects_locations.copy()
+        self.memory.clear()
+    
+    def get_current_state_dict(self) -> Dict:
+        """Retorna el estado actual como diccionario."""
+        return {
+            "current_location": self.current_location,
+            "initial_location": self.initial_location,
+            "people_locations": self.people_locations.copy(),
+            "objects_locations": self.objects_locations.copy(),
+            "memory": self.memory.copy()
+        }
+
+# Instancia global del entorno simulado
+_sim_env = SimulatedEnvironment()
+
+# ============================================================================
 # RESPONSE TYPES - Objetos ligeros para simular respuestas de servicios
 # ============================================================================
 
@@ -391,9 +582,16 @@ def save_face_srv(name: str, num_pics: int = 5):
     return ApprovedResponse(approved=True)
 
 def recognize_face_srv(num_pics: int = 3):
-    """Simula recognize_face - retorna objeto con .approved y .person"""
+    """Simula recognize_face - retorna objeto con .approved y .person basado en ubicación"""
     print(f"[DUMMY] recognize_face: pics={num_pics}")
-    return FaceRecognitionResponse(approved=True, person="Alice")
+    found_person, message = _sim_env.find_person_at_location()
+    
+    if found_person:
+        print(f"[DUMMY] -> {message}")
+        return FaceRecognitionResponse(approved=True, person=found_person)
+    else:
+        print(f"[DUMMY] -> {message}")
+        return FaceRecognitionResponse(approved=False, person="")
 
 def remove_faces_data_srv():
     """Simula remove_faces_data - retorna objeto con .approved"""
@@ -458,9 +656,27 @@ def talk_srv(text: str, language: str = "English", wait: bool = True, animated: 
     return True
 
 def speech2text_srv(seconds: int = 0, lang: str = "eng"):
-    """Simula speech2text - retorna string"""
+    """Simula speech2text - retorna respuestas predefinidas según contexto"""
     print(f"[DUMMY] speech2text: seconds={seconds}, lang={lang}")
-    return "Hello, this is simulated speech"
+    
+    # Respuestas simuladas realistas para benchmarking
+    simulated_responses = [
+        "Sí, estoy aquí",
+        "Hola robot", 
+        "Gracias",
+        "Está bien",
+        "No necesito nada más"
+    ]
+    
+    # Usar la ubicación actual para dar respuestas contextualmente apropiadas
+    current_location = _sim_env.current_location
+    people_here = [person for person, location in _sim_env.people_locations.items() 
+                   if location == current_location]
+    
+    if people_here:
+        return f"Hola, soy {people_here[0]}. ¿En qué puedo ayudarte?"
+    else:
+        return "No escucho a nadie cerca"
 
 def q_a_srv(tag: str):
     """Simula q_a - retorna string"""
@@ -495,9 +711,16 @@ def go_to_relative_point_srv(x: float, y: float, theta: float):
     return True
 
 def go_to_place_srv(place_name: str, graph: int = 1):
-    """Simula go_to_place - retorna 'approved' (NavigationResponse)"""
+    """Simula go_to_place - retorna 'approved' y actualiza ubicación del robot"""
     print(f"[DUMMY] go_to_place: place={place_name}, graph={graph}")
-    return NavigationResponse(approved="approved")
+    
+    success, message = _sim_env.move_to_location(place_name)
+    if success:
+        print(f"[DUMMY] -> {message}")
+        return NavigationResponse(approved="approved")
+    else:
+        print(f"[DUMMY] -> {message}")  
+        return NavigationResponse(approved="failed")
 
 def start_random_navigation_srv():
     """Simula start_random_navigation - retorna True"""

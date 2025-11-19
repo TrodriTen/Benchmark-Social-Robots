@@ -1,0 +1,692 @@
+"""
+Conjunto completo de tareas complejas para evaluación de arquitecturas agentivas.
+
+Tareas organizadas por categoría:
+- Navegación simple
+- Búsqueda y verificación
+- Interacción multi-persona
+- Memoria y razonamiento
+- Percepción y descripción
+- Tareas condicionales
+"""
+
+from typing import List, Dict, Any
+
+
+# Categorías de tareas
+TASK_CATEGORIES = {
+    "navigation_simple": "Navegación básica a ubicaciones",
+    "search_verify": "Búsqueda de personas con verificación",
+    "multi_person": "Interacción con múltiples personas",
+    "memory_reasoning": "Uso de memoria y razonamiento",
+    "perception": "Percepción y descripción del entorno",
+    "conditional": "Lógica condicional (if-then)",
+    "complex_multi_step": "Tareas complejas multi-paso"
+}
+
+
+COMPLEX_TASK_LIST: List[Dict[str, Any]] = [
+    # === NAVEGACIÓN SIMPLE ===
+    {
+        "id": "task_nav_001",
+        "category": "navigation_simple",
+        "task": "Go to the office",
+        "plan": ["Go to the office"],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "easy",
+        "environment_type": "office"
+    },
+    {
+        "id": "task_nav_002",
+        "category": "navigation_simple",
+        "task": "Go to the bathroom",
+        "plan": ["Go to the bathroom"],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "easy",
+        "environment_type": "house"
+    },
+    {
+        "id": "task_nav_003",
+        "category": "navigation_simple",
+        "task": "Go to the reception and then to the elevator",
+        "plan": ["Go to the reception", "Go to the elevator"],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "easy",
+        "environment_type": "office"
+    },
+    {
+        "id": "task_nav_004",
+        "category": "navigation_simple",
+        "task": "Go to the conference room, then the cafeteria, and finally the lobby",
+        "plan": [
+            "Go to the conference room",
+            "Go to the cafeteria",
+            "Go to the lobby"
+        ],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_nav_005",
+        "category": "navigation_simple",
+        "task": "Go to the meeting room A, then meeting room B, then meeting room C",
+        "plan": [
+            "Go to meeting room A",
+            "Go to meeting room B",
+            "Go to meeting room C"
+        ],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_nav_006",
+        "category": "navigation_simple",
+        "task": "Go to the living room and then return to where you started",
+        "plan": [
+            "Record initial location",
+            "Go to the living room",
+            "Return to initial location"
+        ],
+        "expected_tools": ["go_to_place", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_nav_007",
+        "category": "navigation_simple",
+        "task": "Go to the parking lot, then return to the main entrance",
+        "plan": [
+            "Record initial location",
+            "Go to the parking lot",
+            "Return to main entrance"
+        ],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_nav_008",
+        "category": "navigation_simple",
+        "task": "Explore the house",
+        "plan": [
+            "Go to the kitchen",
+            "Go to the bedroom",
+            "Go to the gym",
+            "Go to the dinner table",
+            "Go to the sofa"
+        ],
+        "expected_tools": ["go_to_place"],
+        "difficulty": "medium"
+    },
+    
+    # === BÚSQUEDA Y VERIFICACIÓN ===
+    {
+        "id": "task_search_001",
+        "category": "search_verify",
+        "task": "Go to the office and find a person",
+        "plan": ["Go to the office", "Find a person in the office"],
+        "expected_tools": ["go_to_place", "find_person"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_search_002",
+        "category": "search_verify",
+        "task": "Go to the kitchen and find Richard",
+        "plan": [
+            "Go to the kitchen",
+            "Find a person in the kitchen",
+            "Verify the person is Richard"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "recognize_face"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_search_003",
+        "category": "search_verify",
+        "task": "Find Laura in the library",
+        "plan": [
+            "Go to the library",
+            "Find a person in the library",
+            "Verify the person is Laura"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "recognize_face"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_search_004",
+        "category": "search_verify",
+        "task": "Find Sophia in the break room",
+        "plan": [
+            "Go to the break room",
+            "Find a person in the break room",
+            "Verify the person is Sophia"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "recognize_face"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_search_005",
+        "category": "search_verify",
+        "task": "Find a person in front of you",
+        "plan": ["Find a person"],
+        "expected_tools": ["find_person"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_search_006",
+        "category": "search_verify",
+        "task": "Search for a person in the house",
+        "plan": [
+            "Go to the bedroom",
+            "If no person is found, go to the gym",
+            "If no person is found, go to the kitchen",
+            "If no person is found, go to the dinner table",
+            "If no person is found, go to the sofa"
+        ],
+        "expected_tools": ["go_to_place", "find_person"],
+        "difficulty": "hard"
+    },
+    
+    # === BÚSQUEDA DE OBJETOS ===
+    {
+        "id": "task_object_001",
+        "category": "search_verify",
+        "task": "Go to the garden and find a chair",
+        "plan": ["Go to the garden", "Find an object: chair"],
+        "expected_tools": ["go_to_place", "look_for_object"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_object_002",
+        "category": "search_verify",
+        "task": "Go to the archive room and find a folder",
+        "plan": ["Go to the archive room", "Find an object: folder"],
+        "expected_tools": ["go_to_place", "look_for_object"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_object_003",
+        "category": "search_verify",
+        "task": "Find the first aid kit in the corridor",
+        "plan": ["Go to the corridor", "Find an object: first aid kit"],
+        "expected_tools": ["go_to_place", "look_for_object"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_object_004",
+        "category": "search_verify",
+        "task": "Go to the cafeteria and find a table",
+        "plan": ["Go to the cafeteria", "Find an object: table"],
+        "expected_tools": ["go_to_place", "look_for_object"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_object_005",
+        "category": "search_verify",
+        "task": "Find the delivery package at the main entrance",
+        "plan": ["Go to the main entrance", "Find an object: package"],
+        "expected_tools": ["go_to_place", "look_for_object"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_object_006",
+        "category": "search_verify",
+        "task": "Go to the copy room and count the printers",
+        "plan": [
+            "Go to the copy room",
+            "Find objects: printers",
+            "Count the printers",
+            "Store the count in memory"
+        ],
+        "expected_tools": ["go_to_place", "look_for_object", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    
+    # === INTERACCIÓN MULTI-PERSONA ===
+    {
+        "id": "task_multi_001",
+        "category": "multi_person",
+        "task": "Organize an urgent meeting. Notify Carlos in the kitchen, Ana in the library, and Jorge in the garden that they need to go to the conference room in 15 minutes",
+        "plan": [
+            "Record information about the urgent meeting in 15 minutes",
+            "Go to the kitchen to find Carlos",
+            "Verify the person is Carlos",
+            "Notify Carlos about the urgent meeting",
+            "Go to the library to find Ana",
+            "Verify the person is Ana",
+            "Notify Ana about the urgent meeting",
+            "Go to the garden to find Jorge",
+            "Verify the person is Jorge",
+            "Notify Jorge about the urgent meeting",
+            "Go to the conference room to wait for participants"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "recognize_face", "talk"],
+        "difficulty": "hard"
+    },
+    {
+        "id": "task_multi_002",
+        "category": "multi_person",
+        "task": "Find Julia and give her a message",
+        "plan": [
+            "Find a person",
+            "Verify the person is Julia",
+            "Deliver the message to Julia"
+        ],
+        "expected_tools": ["find_person", "recognize_face", "talk"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_multi_003",
+        "category": "complex_multi_step",
+        "task": "Act as a guide for a new visitor. Show them the reception, cafeteria, and main conference room, explaining the function of each area",
+        "plan": [
+            "Introduce yourself as a guide to the visitor",
+            "Record visitor information",
+            "Go to reception with the visitor",
+            "Explain the function of the reception",
+            "Go to the cafeteria with the visitor",
+            "Explain the services available in the cafeteria",
+            "Go to the main conference room",
+            "Explain the purpose and capabilities of the conference room",
+            "Ask if the visitor has any additional questions",
+            "Guide the visitor back to the main entrance",
+            "Say goodbye to the visitor"
+        ],
+        "expected_tools": ["go_to_place", "talk", "find_person"],
+        "difficulty": "hard"
+    },
+    
+    # === PREGUNTAS E INTERACCIÓN ===
+    {
+        "id": "task_question_001",
+        "category": "memory_reasoning",
+        "task": "Ask someone who sells the best coffee in town",
+        "plan": [
+            "Find a person",
+            "Ask about the best coffee in town",
+            "Store the answer in memory"
+        ],
+        "expected_tools": ["find_person", "talk", "listen", "store_in_memory"],
+        "difficulty": "medium",
+        "note": "Requiere escuchar respuesta (simulado)"
+    },
+    {
+        "id": "task_question_002",
+        "category": "memory_reasoning",
+        "task": "Find Alex and ask him who sells bracelets",
+        "plan": [
+            "Find a person",
+            "Verify the person is Alex",
+            "Ask Alex about who sells bracelets",
+            "Store the answer in memory"
+        ],
+        "expected_tools": ["find_person", "recognize_face", "talk", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_question_003",
+        "category": "memory_reasoning",
+        "task": "Ask someone where the printer is located",
+        "plan": [
+            "Find a person",
+            "Ask about the printer location",
+            "Store the answer in memory"
+        ],
+        "expected_tools": ["find_person", "talk", "store_in_memory"],
+        "difficulty": "easy"
+    },
+    {
+        "id": "task_question_004",
+        "category": "memory_reasoning",
+        "task": "Find Elena and ask her where the meeting is",
+        "plan": [
+            "Find a person",
+            "Verify the person is Elena",
+            "Ask Elena about meeting location",
+            "Store the answer in memory"
+        ],
+        "expected_tools": ["find_person", "recognize_face", "talk", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_question_005",
+        "category": "memory_reasoning",
+        "task": "Find Miguel and ask him about today's lunch special",
+        "plan": [
+            "Find a person",
+            "Verify the person is Miguel",
+            "Ask Miguel about today's lunch special",
+            "Store the answer in memory"
+        ],
+        "expected_tools": ["find_person", "recognize_face", "talk", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_question_006",
+        "category": "memory_reasoning",
+        "task": "Find Pablo and ask him for the WiFi password",
+        "plan": [
+            "Find a person",
+            "Verify the person is Pablo",
+            "Ask Pablo about the WiFi password",
+            "Store the answer in memory"
+        ],
+        "expected_tools": ["find_person", "recognize_face", "talk", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    
+    # === TAREAS CON MEMORIA COMPLEJA ===
+    {
+        "id": "task_memory_001",
+        "category": "memory_reasoning",
+        "task": "Find out who likes strawberries in the house, come back and tell me",
+        "plan": [
+            "If you find a person in the bedroom, ask if they like strawberries and store the answer in memory.",
+            "If you find a person in the gym, ask if they like strawberries and store the answer in memory.",
+            "If you find a person in the kitchen, ask if they like strawberries and store the answer in memory.",
+            "If you find a person in the dinner table, ask if they like strawberries and store the answer in memory.",
+            "If you find a person in the sofa, ask if they like strawberries and store the answer in memory.",
+            "Go back to your initial location",
+            "Check your memory and tell me who likes strawberries"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "store_in_memory", "recall_from_memory"],
+        "difficulty": "hard"
+    },
+    {
+        "id": "task_memory_002",
+        "category": "memory_reasoning",
+        "task": "Discover who enjoys tacos in the house, come back and tell me",
+        "plan": [
+            "If you find a person in the bedroom, ask if they like tacos and store the answer in memory.",
+            "If you find a person in the gym, ask if they like tacos and store the answer in memory.",
+            "If you find a person in the kitchen, ask if they like tacos and store the answer in memory.",
+            "If you find a person in the dinner table, ask if they like tacos and store the answer in memory.",
+            "If you find a person in the sofa, ask if they like tacos and store the answer in memory.",
+            "Go back to your initial location",
+            "Check your memory and tell me who likes tacos"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "store_in_memory", "recall_from_memory"],
+        "difficulty": "hard"
+    },
+    {
+        "id": "task_memory_003",
+        "category": "memory_reasoning",
+        "task": "Find out who likes coffee in the house, come back and tell me",
+        "plan": [
+            "If you find a person in the bedroom, ask if they like coffee and store the answer in memory.",
+            "If you find a person in the gym, ask if they like coffee and store the answer in memory.",
+            "If you find a person in the kitchen, ask if they like coffee and store the answer in memory.",
+            "If you find a person in the dinner table, ask if they like coffee and store the answer in memory.",
+            "If you find a person in the sofa, ask if they like coffee and store the answer in memory.",
+            "Go back to your initial location",
+            "Check your memory and tell me who likes coffee"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "store_in_memory", "recall_from_memory"],
+        "difficulty": "hard"
+    },
+    {
+        "id": "task_memory_004",
+        "category": "memory_reasoning",
+        "task": "Find out which rooms are available for a meeting tomorrow. Ask the reception staff, check the booking board in the main office",
+        "plan": [
+            "Go to the reception",
+            "Ask the reception staff about available rooms for tomorrow",
+            "Go to the main office",
+            "Check the booking board for available rooms",
+            "Go back to your initial location",
+            "Say which rooms are available for a meeting tomorrow"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "store_in_memory", "recall_from_memory"],
+        "difficulty": "hard"
+    },
+    {
+        "id": "task_memory_005",
+        "category": "memory_reasoning",
+        "task": "Find out who sells the best pizzas in the office and then return to your starting point",
+        "plan": [
+            "If you find a person in the office, ask them who sells the best pizza in town",
+            "Return to your starting point",
+            "Say who sells the best pizza in town"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "store_in_memory"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_memory_006",
+        "category": "memory_reasoning",
+        "task": "Find out everyone's coffee preferences for the morning meeting. Visit each department (marketing, sales, and development) and collect their orders, then return to the kitchen",
+        "plan": [
+            "If you find a person in the marketing department, ask about coffee preferences.",
+            "If you find a person in the sales department, ask about coffee preferences.",
+            "If you find a person in the development department, ask about coffee preferences.",
+            "Return to your starting point",
+            "Say the coffee preferences of each department"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "store_in_memory", "recall_from_memory"],
+        "difficulty": "hard"
+    },
+    
+    # === PERCEPCIÓN Y DESCRIPCIÓN ===
+    {
+        "id": "task_perception_001",
+        "category": "perception",
+        "task": "Give a detailed description of what you see",
+        "plan": [
+            "Give a detailed description of what you see"
+        ],
+        "expected_tools": ["describe_environment"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_perception_002",
+        "category": "perception",
+        "task": "Go to the bedroom and give me a detailed description of what you see",
+        "plan": [
+            "Go to the bedroom",
+            "Give a detailed description of what you see"
+        ],
+        "expected_tools": ["go_to_place", "describe_environment"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_perception_003",
+        "category": "perception",
+        "task": "Go to the kitchen and give me a detailed description of what you see",
+        "plan": [
+            "Go to the kitchen",
+            "Give a detailed description of what you see"
+        ],
+        "expected_tools": ["go_to_place", "describe_environment"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_perception_004",
+        "category": "perception",
+        "task": "Go to the gym and give me a detailed description of what you see",
+        "plan": [
+            "Go to the gym",
+            "Give a detailed description of what you see"
+        ],
+        "expected_tools": ["go_to_place", "describe_environment"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_perception_005",
+        "category": "perception",
+        "task": "Go to the dinner table and give me a detailed description of what you see",
+        "plan": [
+            "Go to the dinner table",
+            "Give a detailed description of what you see"
+        ],
+        "expected_tools": ["go_to_place", "describe_environment"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_perception_006",
+        "category": "perception",
+        "task": "Go to the sofa and give me a detailed description of what you see",
+        "plan": [
+            "Go to the sofa",
+            "Give a detailed description of what you see"
+        ],
+        "expected_tools": ["go_to_place", "describe_environment"],
+        "difficulty": "medium"
+    },
+    
+    # === INVENTARIO ===
+    {
+        "id": "task_inventory_001",
+        "category": "perception",
+        "task": "Explore the house and generate an inventory of everything you find",
+        "plan": [
+            "Go to the kitchen",
+            "Inventory items found in the kitchen",
+            "Go to the bedroom",
+            "Inventory items found in the bedroom",
+            "Go to the gym",
+            "Inventory items found in the gym",
+            "Go to the dinner table",
+            "Inventory items found at the dinner table",
+            "Go to the sofa",
+            "Inventory items found on the sofa",
+            "Say the inventory of everything you found"
+        ],
+        "expected_tools": ["go_to_place", "look_for_object", "store_in_memory", "recall_from_memory"],
+        "difficulty": "hard"
+    },
+    {
+        "id": "task_inventory_002",
+        "category": "perception",
+        "task": "Say the inventory of everything in the house",
+        "plan": ["Check your memory and tell me the inventory of everything you found"],
+        "expected_tools": ["recall_from_memory", "talk"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_inventory_003",
+        "category": "perception",
+        "task": "Say the inventory of everything in the office",
+        "plan": ["Check your memory and tell me the inventory of everything you found"],
+        "expected_tools": ["recall_from_memory", "talk"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_inventory_004",
+        "category": "perception",
+        "task": "Say the inventory of everything in the bookstore",
+        "plan": ["Check your memory and tell me the inventory of everything you found"],
+        "expected_tools": ["recall_from_memory", "talk"],
+        "difficulty": "medium"
+    },
+    {
+        "id": "task_inventory_005",
+        "category": "memory_reasoning",
+        "task": "Go to the kitchen and tell Peter where the exercise ball is",
+        "plan": [
+            "Go to the kitchen",
+            "Find a person",
+            "Verify the person is Peter",
+            "Check your memory and tell Peter where the exercise ball is"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "recognize_face", "recall_from_memory", "talk"],
+        "difficulty": "medium"
+    },
+    
+    # === TAREAS CONDICIONALES ===
+    {
+        "id": "task_conditional_001",
+        "category": "conditional",
+        "task": "Go to the office and if you find a person go back to the living room and find a person with a red t-shirt",
+        "plan": [
+            "Go to the office",
+            "If you find a person, go back to the living room",
+            "Find a person with a red t-shirt"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "get_person_desc"],
+        "difficulty": "hard"
+    },
+    
+    # === BÚSQUEDA COMPLEJA ===
+    {
+        "id": "task_complex_001",
+        "category": "complex_multi_step",
+        "task": "Find Maria's lost keys. Ask in each room if anyone has seen the keys and when you find them, tell Maria should be at the entrance where they are",
+        "plan": [
+            "Record information about the lost item: Maria's keys",
+            "Go to the living room to start the search",
+            "Find people and ask about the lost keys",
+            "Go to the kitchen to continue the search",
+            "Find people and ask about the lost keys",
+            "Go to the office to continue the search",
+            "Find people and ask about the lost keys",
+            "Search for object: keys",
+            "Go to the entrance where Maria is waiting",
+            "Verify the person is Maria",
+            "Notify Maria about the found keys"
+        ],
+        "expected_tools": ["go_to_place", "find_person", "talk", "look_for_object", "recognize_face"],
+        "difficulty": "hard"
+    }
+]
+
+
+def get_tasks_by_category(category: str) -> List[Dict[str, Any]]:
+    """
+    Obtiene tareas filtradas por categoría.
+    
+    Args:
+        category: Categoría de tarea
+        
+    Returns:
+        Lista de tareas de esa categoría
+    """
+    return [task for task in COMPLEX_TASK_LIST if task["category"] == category]
+
+
+def get_tasks_by_difficulty(difficulty: str) -> List[Dict[str, Any]]:
+    """
+    Obtiene tareas filtradas por dificultad.
+    
+    Args:
+        difficulty: Nivel de dificultad (easy, medium, hard)
+        
+    Returns:
+        Lista de tareas de esa dificultad
+    """
+    return [task for task in COMPLEX_TASK_LIST if task.get("difficulty") == difficulty]
+
+
+def get_task_summary() -> Dict[str, Any]:
+    """
+    Genera resumen de tareas disponibles.
+    
+    Returns:
+        Diccionario con estadísticas
+    """
+    total = len(COMPLEX_TASK_LIST)
+    by_category = {}
+    by_difficulty = {}
+    
+    for task in COMPLEX_TASK_LIST:
+        cat = task["category"]
+        diff = task.get("difficulty", "unknown")
+        
+        by_category[cat] = by_category.get(cat, 0) + 1
+        by_difficulty[diff] = by_difficulty.get(diff, 0) + 1
+    
+    return {
+        "total_tasks": total,
+        "by_category": by_category,
+        "by_difficulty": by_difficulty,
+        "categories": list(TASK_CATEGORIES.keys())
+    }
+
+
+if __name__ == "__main__":
+    # Mostrar resumen
+    summary = get_task_summary()
+    print(f"Total de tareas: {summary['total_tasks']}")
+    print(f"\nPor categoría:")
+    for cat, count in summary['by_category'].items():
+        print(f"  - {cat}: {count}")
+    print(f"\nPor dificultad:")
+    for diff, count in summary['by_difficulty'].items():
+        print(f"  - {diff}: {count}")

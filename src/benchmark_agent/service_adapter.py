@@ -9,6 +9,7 @@ Este módulo:
 
 from typing import Dict, Any, Callable
 from .tools.dummy_tools import DummyServiceProxy as SP
+import json
 
 
 # ============================================================================
@@ -159,22 +160,57 @@ def go_to_place(location: str, graph: int = 1) -> Dict[str, Any]:
 
 def find_person(name: str) -> Dict[str, Any]:
     """
-    Busca a una persona (simulado con recognize_face).
-    En el contexto del benchmark, "find_person" se mapea a reconocimiento facial.
+    Busca a una persona específica en la ubicación actual.
+    Usa el entorno simulado para dar respuestas realistas.
     """
-    r = SRV["recognize_face"](3)
-    person = getattr(r, "person", None)
-    approved = getattr(r, "approved", None)
+    # Importar aquí para evitar dependencias circulares
+    from .tools.dummy_tools import _sim_env
     
-    # Simular que encontramos a la persona si el nombre coincide
-    # En el dummy siempre devuelve "Alice", pero podemos adaptarlo
-    found = approved and person is not None
+    found_person, message = _sim_env.find_person_at_location(name)
     
-    return {
-        "ok": found,
-        "obs": f"Éxito: Se encontró a {name}." if found else f"Fallo: No se encontró a {name}.",
-        "data": {"person": person, "approved": approved}
-    }
+    if found_person == name:
+        # Encontramos exactamente a quien buscábamos
+        return {
+            "ok": True,
+            "obs": f"Éxito: Se encontró a {name}.",
+            "data": {"person": found_person, "approved": True}
+        }
+    elif found_person and found_person != name:
+        # Hay alguien aquí pero no es quien buscamos
+        return {
+            "ok": False,
+            "obs": f"Se encontró a {found_person}, pero se buscaba a {name}. {message}",
+            "data": {"person": found_person, "approved": False}
+        }
+    else:
+        # No hay nadie aquí
+        return {
+            "ok": False, 
+            "obs": f"No se encontró a {name}. {message}",
+            "data": {"person": "", "approved": False}
+        }
+
+
+def ask_person_location(name: str) -> Dict[str, Any]:
+    """
+    Pregunta dónde está una persona específica.
+    Proporciona información de ubicación sin necesidad de interacción humana.
+    """
+    from .tools.dummy_tools import _sim_env
+    
+    if name in _sim_env.people_locations:
+        location = _sim_env.people_locations[name]
+        return {
+            "ok": True,
+            "obs": f"Según la información disponible, {name} está en {location}.",
+            "data": {"person": name, "location": location}
+        }
+    else:
+        return {
+            "ok": False,
+            "obs": f"No se tiene información sobre la ubicación de {name}.",
+            "data": {"person": name, "location": "unknown"}
+        }
 
 
 def recognize_face(num_pics: int = 3) -> Dict[str, Any]:
@@ -212,13 +248,18 @@ def calc_depth(x: float, y: float, w: float, h: float) -> Dict[str, Any]:
 
 
 def speech2text(seconds: int = 0, lang: str = "eng") -> Dict[str, Any]:
-    """Reconocimiento de voz."""
-    r = SRV["speech2text"](seconds, lang)
-    text = str(r) if r else ""
+    """
+    Reconocimiento de voz. 
+    
+    NOTA: En entorno simulado sin personas reales, siempre retorna 
+    que no se escuchó respuesta (simula que nadie respondió).
+    """
+    # En entorno simulado, no hay personas reales que respondan
+    # Retornar inmediatamente sin esperar
     return {
-        "ok": bool(text),
-        "obs": f"Éxito: Reconocido: '{text}'" if text else "Fallo: No se reconoció voz.",
-        "data": {"text": text}
+        "ok": False,
+        "obs": "No se escuchó respuesta. (Entorno simulado sin personas reales)",
+        "data": {"text": ""}
     }
 
 
@@ -261,11 +302,101 @@ def get_person_desc() -> Dict[str, Any]:
 
 def look_for_object(object_name: str, ignore_seen: bool = False) -> Dict[str, Any]:
     """Busca un objeto."""
-    r = SRV["look_for_object"](object_name, ignore_seen)
+    from .tools.dummy_tools import _sim_env
+    
+    # Usar entorno simulado para búsqueda de objetos
+    obj, message = _sim_env.find_object(object_name)
+    
     return {
-        "ok": _is_ok(r),
-        "obs": f"Éxito: Objeto '{object_name}' encontrado." if _is_ok(r) else f"Fallo: Objeto '{object_name}' no encontrado.",
-        "data": {}
+        "ok": obj is not None,
+        "obs": f"Éxito: {message}" if obj else f"Fallo: {message}",
+        "data": {"object": obj if obj else ""}
+    }
+
+
+def store_in_memory(key: str, value: str) -> Dict[str, Any]:
+    """
+    Almacena información en la memoria del robot.
+    
+    Args:
+        key: Clave para identificar la información
+        value: Información a almacenar
+        
+    Returns:
+        Respuesta con confirmación
+    """
+    from .tools.dummy_tools import _sim_env
+    
+    message = _sim_env.store_memory(key, value)
+    
+    return {
+        "ok": True,
+        "obs": f"Éxito: {message}",
+        "data": {"key": key, "value": value}
+    }
+
+
+def recall_from_memory(key: str = "") -> Dict[str, Any]:
+    """
+    Recupera información de la memoria del robot.
+    
+    Args:
+        key: Clave de la información a recuperar (vacío = toda la memoria)
+        
+    Returns:
+        Información almacenada
+    """
+    from .tools.dummy_tools import _sim_env
+    
+    value = _sim_env.recall_memory(key if key else None)
+    
+    return {
+        "ok": True,
+        "obs": f"Información recuperada: {value}",
+        "data": {"memory": value}
+    }
+
+
+def describe_environment() -> Dict[str, Any]:
+    """
+    Describe el entorno actual (ubicación, personas, objetos visibles).
+    
+    Returns:
+        Descripción detallada del entorno
+    """
+    from .tools.dummy_tools import _sim_env
+    
+    description = _sim_env.describe_location()
+    
+    return {
+        "ok": True,
+        "obs": description,
+        "data": {"description": description, "location": _sim_env.current_location}
+    }
+
+
+def count_objects(object_type: str) -> Dict[str, Any]:
+    """
+    Cuenta objetos de un tipo específico en la ubicación actual.
+    
+    Args:
+        object_type: Tipo de objeto a contar
+        
+    Returns:
+        Número de objetos encontrados
+    """
+    from .tools.dummy_tools import _sim_env
+    
+    # Buscar todos los objetos que coincidan
+    objects_here = [obj for obj, location in _sim_env.objects_locations.items() 
+                   if location == _sim_env.current_location and object_type.lower() in obj.lower()]
+    
+    count = len(objects_here)
+    
+    return {
+        "ok": True,
+        "obs": f"Se encontraron {count} {object_type}(s) en {_sim_env.current_location}",
+        "data": {"count": count, "objects": objects_here}
     }
 
 
@@ -279,6 +410,7 @@ ADAPTERS: Dict[str, Callable] = {
     "go_to_place": go_to_place,
     "move_to": go_to_place,  # Alias alternativo
     "find_person": find_person,
+    "ask_person_location": ask_person_location,
     "recognize_face": recognize_face,
     "read_qr": read_qr,
     "calc_depth": calc_depth,
@@ -288,6 +420,11 @@ ADAPTERS: Dict[str, Callable] = {
     "spin": spin,
     "get_person_desc": get_person_desc,
     "look_for_object": look_for_object,
+    # Nuevas herramientas de memoria y percepción
+    "store_in_memory": store_in_memory,
+    "recall_from_memory": recall_from_memory,
+    "describe_environment": describe_environment,
+    "count_objects": count_objects,
 }
 
 
@@ -314,23 +451,30 @@ ADAPTER_SPECS: Dict[str, Dict[str, Any]] = {
     "go_to_place": {
         "args": {"location": "str", "graph": "int"},
         "required": ["location"],
-        "desc": "Navega a un lugar conocido. Ubicaciones: cocina, sala, puerta.",
+        "desc": "Navega a un lugar conocido. Ubicaciones disponibles: living room, kitchen, bedroom, bathroom, gym, office, library, garden, entrance hall, cafeteria, conference room, reception, lobby, break room, archive room, copy room, main entrance, parking lot, elevator, meeting room A, meeting room B, meeting room C, technical department, HR department, sales department, finance department.",
         "examples": [
-            {"location": "cocina"},
-            {"location": "sala", "graph": 1}
+            {"location": "kitchen"},
+            {"location": "conference room"},
+            {"location": "library", "graph": 1}
         ]
     },
     "move_to": {
         "args": {"location": "str", "graph": "int"},
         "required": ["location"],
-        "desc": "Alias de 'go_to_place'. Navega a un lugar.",
-        "examples": [{"location": "puerta"}]
+        "desc": "Alias de 'go_to_place'. Navega a un lugar conocido.",
+        "examples": [{"location": "entrance hall"}, {"location": "cafeteria"}]
     },
     "find_person": {
         "args": {"name": "str"},
         "required": ["name"],
-        "desc": "Busca y reconoce a una persona. Personas conocidas: Tomas.",
-        "examples": [{"name": "Tomas"}]
+        "desc": "Busca a una persona en la ubicación actual del robot. Si no está aquí, indica dónde se puede encontrar.",
+        "examples": [{"name": "Tomas"}, {"name": "David"}, {"name": "Alice"}]
+    },
+    "ask_person_location": {
+        "args": {"name": "str"},
+        "required": ["name"],
+        "desc": "Pregunta dónde está una persona específica sin necesidad de ir a buscarla físicamente.",
+        "examples": [{"name": "Tomas"}, {"name": "David"}]
     },
     "recognize_face": {
         "args": {"num_pics": "int"},
@@ -353,13 +497,13 @@ ADAPTER_SPECS: Dict[str, Dict[str, Any]] = {
     "speech2text": {
         "args": {"seconds": "int", "lang": "str"},
         "required": [],
-        "desc": "Reconocimiento de voz.",
+        "desc": "Reconocimiento de voz. NOTA: En entorno simulado siempre retorna que no hay respuesta (no usar).",
         "examples": [{"seconds": 5, "lang": "eng"}, {}]
     },
     "listen": {
         "args": {"seconds": "int", "lang": "str"},
         "required": [],
-        "desc": "Alias de 'speech2text'. Escucha al usuario.",
+        "desc": "Alias de 'speech2text'. Escucha al usuario. NOTA: En entorno simulado siempre retorna que no hay respuesta (no usar).",
         "examples": [{}]
     },
     "img_desc": {
@@ -385,6 +529,42 @@ ADAPTER_SPECS: Dict[str, Dict[str, Any]] = {
         "required": ["object_name"],
         "desc": "Busca un objeto específico en el entorno.",
         "examples": [{"object_name": "taza"}, {"object_name": "botella", "ignore_seen": False}]
+    },
+    "store_in_memory": {
+        "args": {"key": "str", "value": "str"},
+        "required": ["key", "value"],
+        "desc": "Almacena información en la memoria del robot para recordarla más tarde. Útil para tareas multi-paso que requieren recordar datos entre pasos (ej: 'averigua quién le gusta el café, vuelve y dime').",
+        "examples": [
+            {"key": "persona_cafe", "value": "Alice le gusta el café"},
+            {"key": "ubicacion_llaves", "value": "Las llaves están en la cocina sobre la mesa"},
+            {"key": "conteo_impresoras", "value": "3"}
+        ]
+    },
+    "recall_from_memory": {
+        "args": {"key": "str"},
+        "required": [],
+        "desc": "Recupera información previamente almacenada en la memoria del robot. Si no se especifica 'key', retorna toda la memoria. Si se especifica 'key', retorna solo ese valor. Retorna None si no existe.",
+        "examples": [
+            {},
+            {"key": "persona_cafe"},
+            {"key": "ubicacion_llaves"}
+        ]
+    },
+    "describe_environment": {
+        "args": {},
+        "required": [],
+        "desc": "Describe el entorno actual: ubicación del robot, personas presentes y objetos visibles. Útil para tareas de inventario, reportes o cuando se necesita información detallada del entorno.",
+        "examples": [{}]
+    },
+    "count_objects": {
+        "args": {"object_type": "str"},
+        "required": ["object_type"],
+        "desc": "Cuenta cuántos objetos de un tipo específico hay en la ubicación actual del robot.",
+        "examples": [
+            {"object_type": "chair"},
+            {"object_type": "printer"},
+            {"object_type": "table"}
+        ]
     }
 }
 
@@ -422,7 +602,21 @@ def normalize_action_input(tool_name: str, raw_input: Any) -> Dict[str, Any]:
                 raise ValueError(f"Falta argumento requerido '{req}' para {tool_name}")
         return raw_input
     
-    # Si es string simple, intentar mapear al primer argumento requerido
+    if isinstance(raw_input, str):
+        s = raw_input.strip()
+        if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, dict):
+                    # valida required:
+                    for req in required:
+                        if req not in parsed:
+                            # si falta un required, caemos luego a los mapeos por defecto
+                            raise ValueError(f"Falta argumento requerido '{req}' para {tool_name}")
+                    return parsed
+            except Exception:
+                pass  
+
     if isinstance(raw_input, str):
         raw_input = raw_input.strip()
         
@@ -432,6 +626,8 @@ def normalize_action_input(tool_name: str, raw_input: Any) -> Dict[str, Any]:
         elif tool_name in ["go_to_place", "move_to"]:
             return {"location": raw_input}
         elif tool_name == "find_person":
+            return {"name": raw_input}
+        elif tool_name == "ask_person_location":
             return {"name": raw_input}
         elif tool_name == "look_for_object":
             return {"object_name": raw_input}

@@ -14,10 +14,10 @@ SCENARIO_LIST = [
     },
     {
         "id": "task_003",
-        "description": "Ve al baño.", # Tarea diseñada para fallar (herramienta no sabe ir al baño)
+        "description": "Ve al baño.", 
     },
     {
         "id": "task_004",
-        "description": "Busca a David.", # Tarea diseñada para fallar (herramienta no encuentra a David)
+        "description": "Busca a David.", 
     }
 ]

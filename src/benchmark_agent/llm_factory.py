@@ -108,7 +108,7 @@ def get_chat_model(
         from langchain_openai import AzureChatOpenAI
 
         deployment = _resolve_azure_deployment(model or _env("ROS_LG_LLM_MODEL"))
-        api_version = _env("OPENAI_API_VERSION") or _env("AZURE_OPENAI_API_VERSION", "2024-06-01")
+        api_version = _env("OPENAI_API_VERSION") or _env("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
         endpoint = _env("AZURE_OPENAI_ENDPOINT")
         key = _env("AZURE_OPENAI_API_KEY")
 
@@ -116,6 +116,7 @@ def get_chat_model(
             raise ValueError("Azure: faltan AZURE_OPENAI_ENDPOINT y/o AZURE_OPENAI_API_KEY.")
 
         # Los modelos de Azure (OpenAI) no necesitan el parche, se devuelven directamente.
+        # stream_usage=True hace que los tokens aparezcan en llm_output para callbacks
         return AzureChatOpenAI(
             azure_deployment=deployment,
             openai_api_version=api_version,
@@ -125,6 +126,7 @@ def get_chat_model(
             max_tokens=max_tokens,
             timeout=timeout,
             max_retries=max_retries,
+            stream_usage=True,  # ← Necesario para que callbacks capturen tokens
             **kwargs,
         )
 
