@@ -1,0 +1,821 @@
+{
+  "metadata": {
+    "architecture": "react",
+    "model": "unknown",
+    "provider": "azure",
+    "task_suite": "simple",
+    "num_tasks": 10,
+    "num_contexts": 1,
+    "max_iterations": 15,
+    "temperature": 0.0
+  },
+  "results": [
+    {
+      "success": true,
+      "steps": 5,
+      "trace": [
+        "Paso 1 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 2 [ℹ️]: view_description({}) -> The image depicts a modern kitchen setting. There is a wooden floor with a light finish. A large, circular chandelier with multiple light fixtures hangs from the ceiling. In the background, there is a kitchen area with white cabinetry and a stainless steel range hood above a stove. A refrigerator is also visible, positioned next to the cabinetry.",
+        "Paso 3 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 4 [ℹ️]: view_description({}) -> The image depicts a kitchen interior with several objects. There is a large, circular chandelier with multiple lights hanging from the ceiling. A refrigerator is visible on the left side of the image. The kitchen features a countertop with cabinets below, and a stove with an overhead range hood. The floor is made of light-colored wooden planks.",
+        "Paso 5 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False"
+      ],
+      "execution_time": 126.98636198043823,
+      "architecture": "react",
+      "final_output": "Agent stopped due to iteration limit or time limit.",
+      "metrics": {
+        "llm_calls_count": 5,
+        "total_tokens": 7365,
+        "prompt_tokens": 7184,
+        "completion_tokens": 181,
+        "input_tokens": 7184,
+        "output_tokens": 181,
+        "total_tokens_input": 7184,
+        "total_tokens_output": 181,
+        "total_latency_seconds": 6.046263694763184,
+        "total_latency": 6.046263694763184,
+        "avg_tokens_per_call": 1473.0,
+        "avg_latency_per_call": 1.2092527389526366,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1283,
+            "tokens_output": 23,
+            "tokens_total": 1306,
+            "latency": 1.3279032707214355,
+            "model": "unknown",
+            "timestamp": 1764099908.3050992
+          },
+          {
+            "tokens_input": 1314,
+            "tokens_output": 40,
+            "tokens_total": 1354,
+            "latency": 0.9949061870574951,
+            "model": "unknown",
+            "timestamp": 1764099970.1866498
+          },
+          {
+            "tokens_input": 1447,
+            "tokens_output": 44,
+            "tokens_total": 1491,
+            "latency": 1.134920597076416,
+            "model": "unknown",
+            "timestamp": 1764099981.1734056
+          },
+          {
+            "tokens_input": 1498,
+            "tokens_output": 51,
+            "tokens_total": 1549,
+            "latency": 2.0108957290649414,
+            "model": "unknown",
+            "timestamp": 1764100006.8596015
+          },
+          {
+            "tokens_input": 1642,
+            "tokens_output": 23,
+            "tokens_total": 1665,
+            "latency": 0.5776379108428955,
+            "model": "unknown",
+            "timestamp": 1764100012.2184768
+          }
+        ],
+        "execution_time": 6.046263694763184,
+        "replannings": 0
+      },
+      "task_id": "task_001",
+      "task_description": "Ve a kitchen.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": true,
+      "steps": 5,
+      "trace": [
+        "Paso 1 [ℹ️]: go_to_location({\"location\": \"bedroom\"}) -> False",
+        "Paso 2 [ℹ️]: go_to_location({\"location\": \"bedroom\"}) -> False",
+        "Paso 3 [ℹ️]: view_description({}) -> The image depicts a bedroom with light wooden flooring. There is a bed with a white and beige floral-patterned bedspread and two pillows. A bedside table with drawers is positioned next to the bed. A desk with a blue chair is situated near a window with blue curtains. An air conditioning unit is mounted on the wall above the desk. A small trash bin is placed on the floor near the window.",
+        "Paso 4 [ℹ️]: view_description({}) -> The image depicts a bedroom with several objects. There is a large bed with a patterned bedspread and two pillows. Next to the bed is a white nightstand with drawers. A wooden desk with a blue chair is positioned against the wall, and a small object, possibly a clock or a decorative item, is on the desk. An air conditioning unit is mounted on the wall above the desk. A window with blue curtains is visible, and a waste bin is placed near the window. The floor is",
+        "Paso 5 [ℹ️]: view_description({}) -> The image depicts a bedroom with several objects. There is a large bed with a patterned bedspread and pillows. Next to the bed is a white nightstand with drawers. A wooden desk with a blue chair is positioned against the wall, and a small object, possibly a book or electronic device, is on the desk. An air conditioning unit is mounted on the wall above the desk. A window with blue curtains is visible, and a small trash bin is placed on the floor near the window. The"
+      ],
+      "execution_time": 124.6261727809906,
+      "architecture": "react",
+      "final_output": "Agent stopped due to iteration limit or time limit.",
+      "metrics": {
+        "llm_calls_count": 5,
+        "total_tokens": 7405,
+        "prompt_tokens": 7167,
+        "completion_tokens": 238,
+        "input_tokens": 7167,
+        "output_tokens": 238,
+        "total_tokens_input": 7167,
+        "total_tokens_output": 238,
+        "total_latency_seconds": 5.947008371353149,
+        "total_latency": 5.947008371353149,
+        "avg_tokens_per_call": 1481.0,
+        "avg_latency_per_call": 1.18940167427063,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1283,
+            "tokens_output": 24,
+            "tokens_total": 1307,
+            "latency": 1.0702316761016846,
+            "model": "unknown",
+            "timestamp": 1764100034.8466668
+          },
+          {
+            "tokens_input": 1314,
+            "tokens_output": 30,
+            "tokens_total": 1344,
+            "latency": 1.168433666229248,
+            "model": "unknown",
+            "timestamp": 1764100114.8161454
+          },
+          {
+            "tokens_input": 1351,
+            "tokens_output": 58,
+            "tokens_total": 1409,
+            "latency": 1.219435691833496,
+            "model": "unknown",
+            "timestamp": 1764100134.7619736
+          },
+          {
+            "tokens_input": 1514,
+            "tokens_output": 68,
+            "tokens_total": 1582,
+            "latency": 1.4147815704345703,
+            "model": "unknown",
+            "timestamp": 1764100141.502176
+          },
+          {
+            "tokens_input": 1705,
+            "tokens_output": 58,
+            "tokens_total": 1763,
+            "latency": 1.0741257667541504,
+            "model": "unknown",
+            "timestamp": 1764100150.9992177
+          }
+        ],
+        "execution_time": 5.947008371353149,
+        "replannings": 0
+      },
+      "task_id": "task_002",
+      "task_description": "Ve a bedroom.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": true,
+      "steps": 1,
+      "trace": [
+        "Paso 1 [ℹ️]: speak({\"text\": \"Ya estoy en la ubicación inicial.\"}) -> True"
+      ],
+      "execution_time": 1.5376708507537842,
+      "architecture": "react",
+      "final_output": "Confirmé que estoy en la ubicación \"init\".",
+      "metrics": {
+        "llm_calls_count": 2,
+        "total_tokens": 2658,
+        "prompt_tokens": 2605,
+        "completion_tokens": 53,
+        "input_tokens": 2605,
+        "output_tokens": 53,
+        "total_tokens_input": 2605,
+        "total_tokens_output": 53,
+        "total_latency_seconds": 1.4915359020233154,
+        "total_latency": 1.4915359020233154,
+        "avg_tokens_per_call": 1329.0,
+        "avg_latency_per_call": 0.7457679510116577,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1282,
+            "tokens_output": 34,
+            "tokens_total": 1316,
+            "latency": 0.9791996479034424,
+            "model": "unknown",
+            "timestamp": 1764100159.3878477
+          },
+          {
+            "tokens_input": 1323,
+            "tokens_output": 19,
+            "tokens_total": 1342,
+            "latency": 0.512336254119873,
+            "model": "unknown",
+            "timestamp": 1764100159.9328394
+          }
+        ],
+        "execution_time": 1.4915359020233154,
+        "replannings": 0
+      },
+      "task_id": "task_003",
+      "task_description": "Ve a init.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": false,
+      "steps": 0,
+      "trace": [
+        "Error fatal: string indices must be integers, not 'str'"
+      ],
+      "execution_time": 86.5702006816864,
+      "architecture": "react",
+      "metrics": {
+        "llm_calls_count": 4,
+        "total_tokens": 5645,
+        "prompt_tokens": 5478,
+        "completion_tokens": 167,
+        "input_tokens": 5478,
+        "output_tokens": 167,
+        "total_tokens_input": 5478,
+        "total_tokens_output": 167,
+        "total_latency_seconds": 5.430832386016846,
+        "total_latency": 5.430832386016846,
+        "avg_tokens_per_call": 1411.25,
+        "avg_latency_per_call": 1.3577080965042114,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1282,
+            "tokens_output": 21,
+            "tokens_total": 1303,
+            "latency": 0.6431114673614502,
+            "model": "unknown",
+            "timestamp": 1764100160.5831196
+          },
+          {
+            "tokens_input": 1311,
+            "tokens_output": 35,
+            "tokens_total": 1346,
+            "latency": 1.9186091423034668,
+            "model": "unknown",
+            "timestamp": 1764100209.3500412
+          },
+          {
+            "tokens_input": 1354,
+            "tokens_output": 51,
+            "tokens_total": 1405,
+            "latency": 1.4771463871002197,
+            "model": "unknown",
+            "timestamp": 1764100229.4288073
+          },
+          {
+            "tokens_input": 1531,
+            "tokens_output": 60,
+            "tokens_total": 1591,
+            "latency": 1.391965389251709,
+            "model": "unknown",
+            "timestamp": 1764100242.8199992
+          }
+        ],
+        "execution_time": 5.430832386016846,
+        "replannings": 0
+      },
+      "task_id": "task_004",
+      "task_description": "Ve a sofa.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "fail",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": true,
+      "steps": 3,
+      "trace": [
+        "Paso 1 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 2 [ℹ️]: view_description({}) -> The image depicts a kitchen interior with several objects. There is a large, modern refrigerator with a metallic finish. Above, a circular chandelier with multiple light fixtures is suspended from the ceiling. To the right, there is a kitchen counter with a stove and an overhead range hood. The cabinetry is white, and the floor is made of light-colored wood planks.",
+        "Paso 3 [ℹ️]: go_to_location({\"location\": \"bedroom\"}) -> False"
+      ],
+      "execution_time": 160.9675259590149,
+      "architecture": "react",
+      "final_output": "Agent stopped due to iteration limit or time limit.",
+      "metrics": {
+        "llm_calls_count": 3,
+        "total_tokens": 4185,
+        "prompt_tokens": 4070,
+        "completion_tokens": 115,
+        "input_tokens": 4070,
+        "output_tokens": 115,
+        "total_tokens_input": 4070,
+        "total_tokens_output": 115,
+        "total_latency_seconds": 3.1646997928619385,
+        "total_latency": 3.1646997928619385,
+        "avg_tokens_per_call": 1395.0,
+        "avg_latency_per_call": 1.0548999309539795,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1288,
+            "tokens_output": 25,
+            "tokens_total": 1313,
+            "latency": 0.5153565406799316,
+            "model": "unknown",
+            "timestamp": 1764100247.0251427
+          },
+          {
+            "tokens_input": 1321,
+            "tokens_output": 42,
+            "tokens_total": 1363,
+            "latency": 1.3897731304168701,
+            "model": "unknown",
+            "timestamp": 1764100323.5484688
+          },
+          {
+            "tokens_input": 1461,
+            "tokens_output": 48,
+            "tokens_total": 1509,
+            "latency": 1.2595701217651367,
+            "model": "unknown",
+            "timestamp": 1764100331.354384
+          }
+        ],
+        "execution_time": 3.1646997928619385,
+        "replannings": 0
+      },
+      "task_id": "task_005",
+      "task_description": "Ve a kitchen y luego ve a bedroom.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": true,
+      "steps": 15,
+      "trace": [
+        "Paso 1 [ℹ️]: go_to_location({\"location\": \"init\"}) -> False",
+        "Paso 2 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 3 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 4 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 5 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 6 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 7 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 8 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 9 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 10 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 11 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 12 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 13 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 14 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 15 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False"
+      ],
+      "execution_time": 44.243857622146606,
+      "architecture": "react",
+      "final_output": "Agent stopped due to iteration limit or time limit.",
+      "metrics": {
+        "llm_calls_count": 15,
+        "total_tokens": 24618,
+        "prompt_tokens": 24051,
+        "completion_tokens": 567,
+        "input_tokens": 24051,
+        "output_tokens": 567,
+        "total_tokens_input": 24051,
+        "total_tokens_output": 567,
+        "total_latency_seconds": 14.155216217041016,
+        "total_latency": 14.155216217041016,
+        "avg_tokens_per_call": 1641.2,
+        "avg_latency_per_call": 0.9436810811360677,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1286,
+            "tokens_output": 41,
+            "tokens_total": 1327,
+            "latency": 1.0467886924743652,
+            "model": "unknown",
+            "timestamp": 1764100408.5301063
+          },
+          {
+            "tokens_input": 1335,
+            "tokens_output": 35,
+            "tokens_total": 1370,
+            "latency": 0.909400463104248,
+            "model": "unknown",
+            "timestamp": 1764100436.0999494
+          },
+          {
+            "tokens_input": 1378,
+            "tokens_output": 35,
+            "tokens_total": 1413,
+            "latency": 1.095710039138794,
+            "model": "unknown",
+            "timestamp": 1764100440.2795093
+          },
+          {
+            "tokens_input": 1421,
+            "tokens_output": 38,
+            "tokens_total": 1459,
+            "latency": 1.555105209350586,
+            "model": "unknown",
+            "timestamp": 1764100441.862554
+          },
+          {
+            "tokens_input": 1466,
+            "tokens_output": 38,
+            "tokens_total": 1504,
+            "latency": 1.2399137020111084,
+            "model": "unknown",
+            "timestamp": 1764100443.1221166
+          },
+          {
+            "tokens_input": 1512,
+            "tokens_output": 38,
+            "tokens_total": 1550,
+            "latency": 1.0094335079193115,
+            "model": "unknown",
+            "timestamp": 1764100444.1604464
+          },
+          {
+            "tokens_input": 1557,
+            "tokens_output": 38,
+            "tokens_total": 1595,
+            "latency": 1.114403486251831,
+            "model": "unknown",
+            "timestamp": 1764100445.299976
+          },
+          {
+            "tokens_input": 1603,
+            "tokens_output": 38,
+            "tokens_total": 1641,
+            "latency": 0.9226422309875488,
+            "model": "unknown",
+            "timestamp": 1764100446.2450616
+          },
+          {
+            "tokens_input": 1648,
+            "tokens_output": 38,
+            "tokens_total": 1686,
+            "latency": 0.7614254951477051,
+            "model": "unknown",
+            "timestamp": 1764100447.0343022
+          },
+          {
+            "tokens_input": 1694,
+            "tokens_output": 38,
+            "tokens_total": 1732,
+            "latency": 0.9664874076843262,
+            "model": "unknown",
+            "timestamp": 1764100448.0247166
+          },
+          {
+            "tokens_input": 1739,
+            "tokens_output": 38,
+            "tokens_total": 1777,
+            "latency": 0.6709120273590088,
+            "model": "unknown",
+            "timestamp": 1764100448.7153568
+          },
+          {
+            "tokens_input": 1785,
+            "tokens_output": 38,
+            "tokens_total": 1823,
+            "latency": 0.778040885925293,
+            "model": "unknown",
+            "timestamp": 1764100449.5056574
+          },
+          {
+            "tokens_input": 1830,
+            "tokens_output": 38,
+            "tokens_total": 1868,
+            "latency": 0.7188270092010498,
+            "model": "unknown",
+            "timestamp": 1764100450.2365875
+          },
+          {
+            "tokens_input": 1876,
+            "tokens_output": 38,
+            "tokens_total": 1914,
+            "latency": 0.6649343967437744,
+            "model": "unknown",
+            "timestamp": 1764100450.9376793
+          },
+          {
+            "tokens_input": 1921,
+            "tokens_output": 38,
+            "tokens_total": 1959,
+            "latency": 0.7011916637420654,
+            "model": "unknown",
+            "timestamp": 1764100451.6769536
+          }
+        ],
+        "execution_time": 14.155216217041016,
+        "replannings": 0
+      },
+      "task_id": "task_006",
+      "task_description": "Ve a init, luego a kitchen.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": false,
+      "steps": 0,
+      "trace": [
+        "Error fatal: 1 validation error for find_item_with_characteristic\ncharacteristic\n  Field required [type=missing, input_value={'class_type': '{\"class_t...ture\": \"dinner_table\"}'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing"
+      ],
+      "execution_time": 18.30110192298889,
+      "architecture": "react",
+      "metrics": {
+        "llm_calls_count": 3,
+        "total_tokens": 4203,
+        "prompt_tokens": 4013,
+        "completion_tokens": 190,
+        "input_tokens": 4013,
+        "output_tokens": 190,
+        "total_tokens_input": 4013,
+        "total_tokens_output": 190,
+        "total_latency_seconds": 2.7132863998413086,
+        "total_latency": 2.7132863998413086,
+        "avg_tokens_per_call": 1401.0,
+        "avg_latency_per_call": 0.9044287999471029,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1285,
+            "tokens_output": 35,
+            "tokens_total": 1320,
+            "latency": 0.6343259811401367,
+            "model": "unknown",
+            "timestamp": 1764100452.3599057
+          },
+          {
+            "tokens_input": 1327,
+            "tokens_output": 66,
+            "tokens_total": 1393,
+            "latency": 1.1815476417541504,
+            "model": "unknown",
+            "timestamp": 1764100469.1006157
+          },
+          {
+            "tokens_input": 1401,
+            "tokens_output": 89,
+            "tokens_total": 1490,
+            "latency": 0.8974127769470215,
+            "model": "unknown",
+            "timestamp": 1764100470.0172193
+          }
+        ],
+        "execution_time": 2.7132863998413086,
+        "replannings": 0
+      },
+      "task_id": "task_007",
+      "task_description": "Busca un objeto chair.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "fail",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": true,
+      "steps": 12,
+      "trace": [
+        "Paso 1 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 2 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False",
+        "Paso 3 [ℹ️]: find_object({\"object_name\": \"dinner_table\"}) -> False",
+        "Paso 4 [ℹ️]: count_objects({\"object_name\": \"dinner_table\"}) -> None",
+        "Paso 5 [ℹ️]: go_to_location({\"location\": \"sofa\"}) -> False",
+        "Paso 6 [ℹ️]: go_to_location({\"location\": \"bedroom\"}) -> False",
+        "Paso 7 [ℹ️]: go_to_location({\"location\": \"gym\"}) -> False",
+        "Paso 8 [ℹ️]: find_object({\"object_name\": \"dinner_table\"}) -> False",
+        "Paso 9 [ℹ️]: find_object({\"object_name\": \"dinner_table\"}) -> False",
+        "Paso 10 [ℹ️]: find_object({\"object_name\": \"dinner_table\"}) -> False",
+        "Paso 11 [ℹ️]: find_object({\"object_name\": \"dinner_table\"}) -> False",
+        "Paso 12 [ℹ️]: find_object({\"object_name\": \"dinner_table\"}) -> False"
+      ],
+      "execution_time": 120.7358648777008,
+      "architecture": "react",
+      "final_output": "Agent stopped due to iteration limit or time limit.",
+      "metrics": {
+        "llm_calls_count": 12,
+        "total_tokens": 20074,
+        "prompt_tokens": 19448,
+        "completion_tokens": 626,
+        "input_tokens": 19448,
+        "output_tokens": 626,
+        "total_tokens_input": 19448,
+        "total_tokens_output": 626,
+        "total_latency_seconds": 16.417746782302856,
+        "total_latency": 16.417746782302856,
+        "avg_tokens_per_call": 1672.8333333333333,
+        "avg_latency_per_call": 1.3681455651919048,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1288,
+            "tokens_output": 30,
+            "tokens_total": 1318,
+            "latency": 0.6500470638275146,
+            "model": "unknown",
+            "timestamp": 1764100470.6817982
+          },
+          {
+            "tokens_input": 1326,
+            "tokens_output": 39,
+            "tokens_total": 1365,
+            "latency": 1.1687097549438477,
+            "model": "unknown",
+            "timestamp": 1764100471.868615
+          },
+          {
+            "tokens_input": 1372,
+            "tokens_output": 73,
+            "tokens_total": 1445,
+            "latency": 0.8571295738220215,
+            "model": "unknown",
+            "timestamp": 1764100472.7734168
+          },
+          {
+            "tokens_input": 1453,
+            "tokens_output": 73,
+            "tokens_total": 1526,
+            "latency": 1.1709113121032715,
+            "model": "unknown",
+            "timestamp": 1764100490.0367415
+          },
+          {
+            "tokens_input": 1533,
+            "tokens_output": 66,
+            "tokens_total": 1599,
+            "latency": 0.8092358112335205,
+            "model": "unknown",
+            "timestamp": 1764100490.8716211
+          },
+          {
+            "tokens_input": 1607,
+            "tokens_output": 51,
+            "tokens_total": 1658,
+            "latency": 1.0577139854431152,
+            "model": "unknown",
+            "timestamp": 1764100502.09532
+          },
+          {
+            "tokens_input": 1666,
+            "tokens_output": 51,
+            "tokens_total": 1717,
+            "latency": 0.7257919311523438,
+            "model": "unknown",
+            "timestamp": 1764100502.8524895
+          },
+          {
+            "tokens_input": 1725,
+            "tokens_output": 55,
+            "tokens_total": 1780,
+            "latency": 0.962925910949707,
+            "model": "unknown",
+            "timestamp": 1764100503.8440382
+          },
+          {
+            "tokens_input": 1787,
+            "tokens_output": 47,
+            "tokens_total": 1834,
+            "latency": 5.24970269203186,
+            "model": "unknown",
+            "timestamp": 1764100524.6122122
+          },
+          {
+            "tokens_input": 1842,
+            "tokens_output": 47,
+            "tokens_total": 1889,
+            "latency": 1.5784804821014404,
+            "model": "unknown",
+            "timestamp": 1764100541.7785769
+          },
+          {
+            "tokens_input": 1897,
+            "tokens_output": 47,
+            "tokens_total": 1944,
+            "latency": 1.1445329189300537,
+            "model": "unknown",
+            "timestamp": 1764100558.6302507
+          },
+          {
+            "tokens_input": 1952,
+            "tokens_output": 47,
+            "tokens_total": 1999,
+            "latency": 1.0425653457641602,
+            "model": "unknown",
+            "timestamp": 1764100575.2846432
+          }
+        ],
+        "execution_time": 16.417746782302856,
+        "replannings": 0
+      },
+      "task_id": "task_008",
+      "task_description": "Ve a kitchen y busca dinner_table.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": false,
+      "steps": 0,
+      "trace": [
+        "Error fatal: 1 validation error for search_for_specific_person\nspecific_characteristic\n  Field required [type=missing, input_value={'characterystic_type': '...acteristic\": \"person\"}'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing"
+      ],
+      "execution_time": 3.7443277835845947,
+      "architecture": "react",
+      "metrics": {
+        "llm_calls_count": 2,
+        "total_tokens": 2794,
+        "prompt_tokens": 2650,
+        "completion_tokens": 144,
+        "input_tokens": 2650,
+        "output_tokens": 144,
+        "total_tokens_input": 2650,
+        "total_tokens_output": 144,
+        "total_latency_seconds": 3.7140374183654785,
+        "total_latency": 3.7140374183654785,
+        "avg_tokens_per_call": 1397.0,
+        "avg_latency_per_call": 1.8570187091827393,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1290,
+            "tokens_output": 62,
+            "tokens_total": 1352,
+            "latency": 1.282679796218872,
+            "model": "unknown",
+            "timestamp": 1764100592.0422187
+          },
+          {
+            "tokens_input": 1360,
+            "tokens_output": 82,
+            "tokens_total": 1442,
+            "latency": 2.4313576221466064,
+            "model": "unknown",
+            "timestamp": 1764100594.4988768
+          }
+        ],
+        "execution_time": 3.7140374183654785,
+        "replannings": 0
+      },
+      "task_id": "task_009",
+      "task_description": "Cuenta cuántos objetos de tipo person hay.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "fail",
+      "model": "unknown",
+      "task_suite": "simple"
+    },
+    {
+      "success": true,
+      "steps": 2,
+      "trace": [
+        "Paso 1 [ℹ️]: go_to_location({\"location\": \"bedroom\"}) -> False",
+        "Paso 2 [ℹ️]: go_to_location({\"location\": \"kitchen\"}) -> False"
+      ],
+      "execution_time": 127.36448884010315,
+      "architecture": "react",
+      "final_output": "Agent stopped due to iteration limit or time limit.",
+      "metrics": {
+        "llm_calls_count": 2,
+        "total_tokens": 2688,
+        "prompt_tokens": 2610,
+        "completion_tokens": 78,
+        "input_tokens": 2610,
+        "output_tokens": 78,
+        "total_tokens_input": 2610,
+        "total_tokens_output": 78,
+        "total_latency_seconds": 2.4132513999938965,
+        "total_latency": 2.4132513999938965,
+        "avg_tokens_per_call": 1344.0,
+        "avg_latency_per_call": 1.2066256999969482,
+        "llm_calls_detail": [
+          {
+            "tokens_input": 1288,
+            "tokens_output": 26,
+            "tokens_total": 1314,
+            "latency": 0.9107778072357178,
+            "model": "unknown",
+            "timestamp": 1764100595.4473965
+          },
+          {
+            "tokens_input": 1322,
+            "tokens_output": 52,
+            "tokens_total": 1374,
+            "latency": 1.5024735927581787,
+            "model": "unknown",
+            "timestamp": 1764100638.544314
+          }
+        ],
+        "execution_time": 2.4132513999938965,
+        "replannings": 0
+      },
+      "task_id": "task_010",
+      "task_description": "Ve a bedroom, luego regresa a init.",
+      "task_description_perturbed": null,
+      "perturbations_applied": [],
+      "result_category": "success",
+      "model": "unknown",
+      "task_suite": "simple"
+    }
+  ]
+}

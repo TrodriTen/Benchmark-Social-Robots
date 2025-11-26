@@ -273,6 +273,28 @@ def run_task_with_context(
     else:
         _sim_env.reset_to_initial()
     
+    # Si se usan herramientas reales, resetear solo el mundo y la ubicación del robot
+    if hasattr(agent, 'use_real_tools') and agent.use_real_tools:
+        import subprocess
+        import time
+        
+        try:
+            # Resetear mundo de Gazebo
+            subprocess.run(
+                "rosservice call /gazebo/reset_world",
+                shell=True,
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL
+            )
+            time.sleep(1)
+            
+            # Resetear ubicación del robot
+            from src.benchmark_agent.tools.ros_langgraph_tools import tm
+            tm.set_current_place("init")
+            
+        except Exception as e:
+            print(f"⚠️  Error al resetear: {e}")
+    
     # Obtener descripción de tarea
     task_description = task.get('task', task.get('description', ''))
     
@@ -403,6 +425,13 @@ Ejemplos de uso:
         help="Usar memoria vectorial en Reference (default: True)."
     )
     
+    # Herramientas
+    parser.add_argument(
+        "--use-real-tools",
+        action="store_true",
+        help="Usar herramientas reales de ROS en lugar de adapters dummy."
+    )
+    
     # Perturbaciones
     parser.add_argument(
         "--perturbations",
@@ -456,6 +485,7 @@ Ejemplos de uso:
     print(f"Model: {args.model or 'default'}")
     print(f"Task Suite: {args.task_suite}")
     print(f"Temperature: {args.temperature}")
+    print(f"Herramientas: {'REALES (ROS)' if args.use_real_tools else 'DUMMY (Simuladas)'}")
     if args.architecture == "reflexion":
         print(f"Max Attempts: {args.max_attempts}")
     elif args.architecture in ["react", "reference"]:
@@ -492,41 +522,51 @@ Ejemplos de uso:
         print("  - Variables de entorno están configuradas (OPENAI_API_KEY, AZURE_*)")
         print("  - El modelo especificado está disponible")
         return 1
-
-    # 2. Instanciar arquitectura
-    print("\n⚙️  Instanciando arquitectura...")
+    
+    # 3. Instanciar arquitectura
+    print("⚙️  Instanciando arquitectura...")
     agent_to_test: BaseAgent = None
     
     try:
         if args.architecture == "plan-then-act":
-            agent_to_test = PlanThenActAgent(llm=llm)
+            agent_to_test = PlanThenActAgent(
+                llm=llm,
+                use_real_tools=args.use_real_tools
+            )
         
         elif args.architecture == "react":
             agent_to_test = ReactAgent(
                 llm=llm,
-                max_iterations=args.max_iterations
+                max_iterations=args.max_iterations,
+                use_real_tools=args.use_real_tools
             )
         
         elif args.architecture == "reflexion":
             agent_to_test = ReflexionAgent(
                 llm=llm,
-                tools=[],
+                tools=None,
                 max_attempts=args.max_attempts,
-                max_iterations_per_attempt=args.max_iterations
+                max_iterations_per_attempt=args.max_iterations,
+                use_real_tools=args.use_real_tools
             )
         
         elif args.architecture == "reference":
             agent_to_test = ReferenceAgent(
                 llm=llm,
-                tools=[],
+                tools=None,
                 max_iterations=args.max_iterations,
-                use_memory=args.use_memory
+                use_memory=args.use_memory,
+                use_real_tools=args.use_real_tools
             )
         
         print(f"✅ Arquitectura instanciada: {agent_to_test.__class__.__name__}")
         
-        if hasattr(agent_to_test, 'adapters'):
-            print(f"   Adapters disponibles: {len(agent_to_test.adapters)}")
+        if args.use_real_tools:
+            if hasattr(agent_to_test, 'tools'):
+                print(f"   Herramientas reales disponibles: {len(agent_to_test.tools)}")
+        else:
+            if hasattr(agent_to_test, 'adapters'):
+                print(f"   Adapters disponibles: {len(agent_to_test.adapters)}")
     
     except Exception as e:
         print(f"❌ Error al instanciar arquitectura: {e}")

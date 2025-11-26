@@ -31,20 +31,22 @@ class ReflexionAgent(BaseAgent):
     def __init__(
         self, 
         llm: BaseChatModel, 
-        tools: List[BaseTool],
+        tools: List[BaseTool] = None,
         max_attempts: int = 3,
         max_iterations_per_attempt: int = 10,
-        max_execution_time: Optional[float] = 120.0
+        max_execution_time: Optional[float] = 120.0,
+        use_real_tools: bool = False
     ):
         """
         Args:
             llm: Modelo de lenguaje
-            tools: Lista de herramientas disponibles
+            tools: Lista de herramientas disponibles (puede ser None)
             max_attempts: Máximo número de intentos (trials)
             max_iterations_per_attempt: Máximo de pasos ReAct por intento
             max_execution_time: Tiempo máximo de ejecución por intento en segundos
+            use_real_tools: Si True, usa herramientas reales de ros_langgraph_tools
         """
-        super().__init__(llm, tools)
+        super().__init__(llm, tools, use_real_tools=use_real_tools)
         self.max_attempts = max_attempts
         self.max_iterations_per_attempt = max_iterations_per_attempt
         self.max_execution_time = max_execution_time
@@ -229,6 +231,11 @@ Comienza tu razonamiento:"""
     
     def _create_langchain_tools(self) -> List[StructuredTool]:
         """Convierte adapters a herramientas LangChain con args_schema y wrapper."""
+        # Si usamos herramientas reales, simplemente retornarlas
+        if self.use_real_tools:
+            return self.tools
+        
+        # Caso legacy: convertir adapters a herramientas LangChain
         from pydantic import BaseModel, Field
         from typing import Optional
         lc_tools = []

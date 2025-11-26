@@ -33,20 +33,22 @@ class ReferenceAgent(BaseAgent):
     def __init__(
         self, 
         llm: BaseChatModel, 
-        tools: List[BaseTool],
+        tools: List[BaseTool] = None,
         max_iterations: int = 15,
         max_execution_time: Optional[float] = 120.0,
-        use_memory: bool = True
+        use_memory: bool = True,
+        use_real_tools: bool = False
     ):
         """
         Args:
             llm: Modelo de lenguaje
-            tools: Lista de herramientas disponibles
+            tools: Lista de herramientas disponibles (puede ser None)
             max_iterations: Máximo de pasos ReAct
             max_execution_time: Tiempo máximo de ejecución en segundos
             use_memory: Si se debe usar recuperación de memoria vectorial
+            use_real_tools: Si True, usa herramientas reales de ros_langgraph_tools
         """
-        super().__init__(llm, tools)
+        super().__init__(llm, tools, use_real_tools=use_real_tools)
         self.max_iterations = max_iterations
         self.max_execution_time = max_execution_time
         self.use_memory = use_memory
@@ -303,6 +305,11 @@ REFLEXIÓN (1 oración):"""
         """
         Convierte adapters a herramientas LangChain para usar con create_react_agent.
         """
+        # Si usamos herramientas reales, simplemente retornarlas
+        if self.use_real_tools:
+            return self.tools
+        
+        # Caso legacy: convertir adapters a herramientas LangChain
         lc_tools = []
         
         for tool_name, adapter_func in self.adapters.items():

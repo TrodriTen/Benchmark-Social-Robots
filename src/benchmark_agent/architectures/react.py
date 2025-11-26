@@ -16,16 +16,25 @@ class ReactAgent(BaseAgent):
     Implementación de la arquitectura ReAct (Reasoning + Acting) para un robot social.
     """
     
-    def __init__(self, llm: BaseChatModel, max_iterations: int = 10, max_execution_time: int = 120):
-        super().__init__(llm=llm, tools=None)
+    def __init__(self, llm: BaseChatModel, max_iterations: int = 10, max_execution_time: int = 120, use_real_tools: bool = False):
+        super().__init__(llm=llm, tools=None, use_real_tools=use_real_tools)
         self.max_iterations = max_iterations
         self.max_execution_time = max_execution_time
-        self.adapters = ADAPTERS               
-        self.adapter_specs = ADAPTER_SPECS
+        
+        # Si no se usan herramientas reales, cargar adapters dummy
+        if not use_real_tools:
+            self.adapters = ADAPTERS               
+            self.adapter_specs = ADAPTER_SPECS
+        
         self.agent_executor = self._create_react_agent()
 
     def _create_langchain_tools(self) -> List[StructuredTool]:
         """Convierte adapters a herramientas LangChain con args_schema y wrapper."""
+        # Si usamos herramientas reales, simplemente retornarlas
+        if self.use_real_tools:
+            return self.tools
+        
+        # Caso legacy: convertir adapters a herramientas LangChain
         from pydantic import BaseModel, Field
         from typing import Optional
         lc_tools = []
@@ -113,12 +122,72 @@ class ReactAgent(BaseAgent):
 
     def _create_react_prompt(self) -> PromptTemplate:
         """Crea el prompt específico para ReAct usando el prompt mejorado."""
-        template = get_improved_prompt("react")
+        # Usar el template apropiado según el tipo de herramientas
+        if self.use_real_tools:
+            # Para herramientas reales, usar un prompt específico que las describe
+            template = self._get_real_tools_prompt()
+        else:
+            # Para adapters dummy, usar el prompt mejorado existente
+            template = get_improved_prompt("react")
         
         return PromptTemplate(
             input_variables=["input", "agent_scratchpad", "tools", "tool_names"],
             template=template
         )
+    
+    def _get_real_tools_prompt(self) -> str:
+        """Retorna el prompt para usar con herramientas reales de ROS."""
+        from ..real_tools_adapter import get_real_tools_description
+        
+        return """Eres Pepper, un robot social humanoide diseñado para interactuar con personas de manera natural y amigable.
+
+Tu objetivo es completar la tarea del usuario paso a paso, razonando antes de cada acción.
+
+INFORMACIÓN DEL ENTORNO:
+- Robot inicia en: init
+- Ubicaciones disponibles: init, kitchen, bedroom, gym, sofa, dinner_table
+- Objetos rastreables: chair, exercise ball, table, folder, first aid kit, package, printer, keys, book, coffee machine
+
+HERRAMIENTAS DISPONIBLES:
+{tools}
+
+NOMBRES DE HERRAMIENTAS: {tool_names}
+
+FORMATO DE RESPUESTA OBLIGATORIO:
+Debes seguir este formato EXACTAMENTE:
+
+Thought: [Piensa en qué necesitas hacer ahora y por qué]
+Action: [Nombre EXACTO de la herramienta de la lista]
+Action Input: [Argumentos en formato JSON]
+Observation: [El sistema mostrará el resultado automáticamente]
+
+... (repite Thought/Action/Action Input/Observation según sea necesario)
+
+Thought: Ya completé la tarea
+Final Answer: [Resumen de lo que lograste]
+
+REGLAS IMPORTANTES:
+1. Usa SOLO las herramientas de la lista de arriba
+2. Los nombres de herramientas deben ser EXACTOS
+3. Action Input debe ser JSON válido
+4. NO inventes herramientas ni argumentos
+
+EJEMPLOS:
+Thought: Necesito ir a la cocina
+Action: go_to_location
+Action Input: {{"location": "kitchen"}}
+Observation: Éxito: Navegación completada a kitchen
+
+Thought: Debo hablar con alguien
+Action: speak
+Action Input: {{"text": "Hola, ¿cómo estás?"}}
+Observation: Éxito: Mensaje comunicado
+
+Comencemos!
+
+Tarea: {input}
+
+{agent_scratchpad}"""
 
     def _create_react_agent(self) -> AgentExecutor:
         """Crea el agente ReAct usando LangChain."""

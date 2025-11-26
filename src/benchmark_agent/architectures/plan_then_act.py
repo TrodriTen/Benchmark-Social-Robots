@@ -30,17 +30,22 @@ class PlanThenActAgent(BaseAgent):
     """
     Implementación de la arquitectura 'Plan-then-Act'.
     Paso 1: El LLM genera un plan completo (JSON).
-    Paso 2: Python ejecuta ese plan secuencialmente usando adapters.
+    Paso 2: Python ejecuta ese plan secuencialmente usando adapters o herramientas reales.
     """
     
-    def __init__(self, llm: BaseChatModel, tools: List[BaseTool] = None):
-        super().__init__(llm, tools)
+    def __init__(self, llm: BaseChatModel, tools: List[BaseTool] = None, use_real_tools: bool = False):
+        super().__init__(llm, tools, use_real_tools=use_real_tools)
         self.planner_chain = self._create_planner_chain()
 
     def _create_planner_chain(self):
         """Crea la cadena de planificación usando el LLM con salida estructurada."""
         
-        tools_desc = get_tools_description()
+        # Obtener descripción de herramientas según el modo
+        if self.use_real_tools:
+            from ..real_tools_adapter import get_real_tools_description
+            tools_desc = get_real_tools_description()
+        else:
+            tools_desc = get_tools_description()
         
         prompt_template = ChatPromptTemplate.from_messages([
             ("system", 
@@ -131,30 +136,67 @@ class PlanThenActAgent(BaseAgent):
         return plan
 
     def _execute_plan(self, plan: Plan) -> List[str]:
-        """Paso 2: Ejecutar el plan usando adapters."""
+        """Paso 2: Ejecutar el plan usando adapters o herramientas reales."""
         print("--- 🚀 Ejecutando Plan ---")
         execution_trace = []
         
         for i, step in enumerate(plan.steps):
             print(f"\nPaso {i+1}/{len(plan.steps)}: {step.tool_name}({step.arguments})")
             
-            # Verificar que la herramienta existe
-            if step.tool_name not in self.adapters:
-                result = {
-                    "ok": False,
-                    "obs": f"Error: Herramienta '{step.tool_name}' no encontrada.",
-                    "data": {}
-                }
-                print(f"❌ {result['obs']}")
-                execution_trace.append(f"Paso {i+1} [Fallo]: {step.tool_name} -> {result['obs']}")
-                break  # Abortar plan
-            
-            # Obtener función adaptadora
-            adapter_func = self.adapters[step.tool_name]
+            if self.use_real_tools:
+                # Modo herramientas reales: buscar la herramienta en self.tools
+                tool = next((t for t in self.tools if t.name == step.tool_name), None)
+                if tool is None:
+                    result = {
+                        "ok": False,
+                        "obs": f"Error: Herramienta '{step.tool_name}' no encontrada.",
+                        "data": {}
+                    }
+                    print(f"❌ {result['obs']}")
+                    execution_trace.append(f"Paso {i+1} [Fallo]: {step.tool_name} -> {result['obs']}")
+                    break
+            else:
+                # Modo adapters legacy: verificar en self.adapters
+                if step.tool_name not in self.adapters:
+                    result = {
+                        "ok": False,
+                        "obs": f"Error: Herramienta '{step.tool_name}' no encontrada.",
+                        "data": {}
+                    }
+                    print(f"❌ {result['obs']}")
+                    execution_trace.append(f"Paso {i+1} [Fallo]: {step.tool_name} -> {result['obs']}")
+                    break  # Abortar plan
+                
+                # Obtener función adaptadora
+                adapter_func = self.adapters[step.tool_name]
             
             try:
-                # Ejecutar con normalización de resultado
-                result = adapter_func(**step.arguments)
+                # Ejecutar según el modo
+                if self.use_real_tools:
+                    # Ejecutar herramienta real y normalizar resultado
+                    raw_result = tool.invoke(step.arguments)
+                    # Normalizar a formato estándar
+                    if isinstance(raw_result, bool):
+                        result = {
+                            "ok": raw_result,
+                            "obs": f"Éxito: {step.tool_name} completado" if raw_result else f"Fallo: {step.tool_name} falló",
+                            "data": {}
+                        }
+                    elif isinstance(raw_result, (str, int, list)):
+                        result = {
+                            "ok": True,
+                            "obs": f"Resultado: {raw_result}",
+                            "data": {"result": raw_result}
+                        }
+                    else:
+                        result = {
+                            "ok": True,
+                            "obs": str(raw_result),
+                            "data": {}
+                        }
+                else:
+                    # Ejecutar con normalización de resultado (adapters legacy)
+                    result = adapter_func(**step.arguments)
                 
                 status = "✓" if result["ok"] else "✗"
                 print(f"{status} {result['obs']}")

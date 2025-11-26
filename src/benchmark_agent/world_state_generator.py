@@ -15,15 +15,14 @@ from copy import deepcopy
 # CONFIGURACIÓN DEL MUNDO
 # ============================================================================
 
-# Ubicaciones disponibles por tipo
+# Ubicaciones disponibles por tipo (sincronizadas con globals.py y el mapa de navegación ROS)
 HOUSE_LOCATIONS = [
-    "living room",
+    "init",
     "kitchen",
     "bedroom",
-    "bathroom",
     "gym",
-    "entrance hall",
-    "garden"
+    "sofa",
+    "dinner_table"
 ]
 
 OFFICE_LOCATIONS = [

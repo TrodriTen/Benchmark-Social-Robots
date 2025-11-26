@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Dict, Callable
+from typing import List, Any, Dict, Callable, Optional
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
@@ -10,21 +10,32 @@ class BaseAgent(ABC):
     tengan el mismo método de entrada 'run'.
     """
     
-    def __init__(self, llm: BaseChatModel, tools: List[BaseTool] = None):
+    def __init__(self, llm: BaseChatModel, tools: List[BaseTool] = None, use_real_tools: bool = False):
         """
         Inicializa el agente con un modelo de lenguaje y herramientas.
         
         Args:
             llm: Modelo de lenguaje
-            tools: Lista de herramientas (legacy, puede ser None)
+            tools: Lista de herramientas (puede ser None para usar adapters o real_tools)
+            use_real_tools: Si True, usa herramientas reales de ros_langgraph_tools.
+                           Si False, usa los adapters dummy por defecto.
         """
         self.llm = llm
-        self.tools = tools or []
+        self.use_real_tools = use_real_tools
         
-        # NUEVO: Usar adapters en lugar de tools directamente
-        from ..service_adapter import ADAPTERS, ADAPTER_SPECS
-        self.adapters: Dict[str, Callable] = ADAPTERS
-        self.adapter_specs: Dict[str, Dict] = ADAPTER_SPECS
+        # Determinar qué herramientas usar
+        if use_real_tools:
+            # Usar herramientas reales de ROS
+            from ..real_tools_adapter import get_real_tools, REAL_TOOLS_METADATA
+            self.tools = get_real_tools()
+            self.adapters = None  # No usamos adapters con herramientas reales
+            self.adapter_specs = REAL_TOOLS_METADATA
+        else:
+            # Usar adapters dummy (comportamiento por defecto)
+            self.tools = tools or []
+            from ..service_adapter import ADAPTERS, ADAPTER_SPECS
+            self.adapters: Dict[str, Callable] = ADAPTERS
+            self.adapter_specs: Dict[str, Dict] = ADAPTER_SPECS
     
     @abstractmethod
     def run(self, task_description: str) -> Dict[str, Any]:
