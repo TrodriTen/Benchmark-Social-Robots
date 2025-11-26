@@ -42,6 +42,17 @@ def find_object(object_name: str) -> bool:
     Returns:
         True if the object is found, False otherwise
     """
+    # Parsear el argumento si viene como JSON string
+    import json
+    print(f"SEARCHING FOR OBJECT: {object_name}")
+    if isinstance(object_name, str) and object_name.startswith('{'):
+        try:
+            parsed = json.loads(object_name)
+            if 'object_name' in parsed:
+                object_name = parsed['object_name']
+        except:
+            pass
+    
     with execution_lock:
         return tm.find_object(object_name)
 
@@ -56,6 +67,17 @@ def count_objects(object_name: str) -> int:
     Returns:
         Number of objects found
     """
+    # Parsear el argumento si viene como JSON string
+    import json
+    print("counting objects")
+    if isinstance(object_name, str) and object_name.startswith('{'):
+        try:
+            parsed = json.loads(object_name)
+            if 'object_name' in parsed:
+                object_name = parsed['object_name']
+        except:
+            pass
+    
     with execution_lock:
         return tm.count_objects(object_name)
 
@@ -78,6 +100,18 @@ def search_for_specific_person(characterystic_type: str, specific_characteristic
     Returns:
         True if the person is found, False otherwise
     """
+    # Parsear el argumento si viene como JSON string
+    import json
+    if isinstance(characterystic_type, str) and characterystic_type.startswith('{'):
+        try:
+            parsed = json.loads(characterystic_type)
+            if 'characterystic_type' in parsed:
+                characterystic_type = parsed['characterystic_type']
+            if 'specific_characteristic' in parsed:
+                specific_characteristic = parsed['specific_characteristic']
+        except:
+            pass
+    
     with execution_lock:
         return tm.search_for_specific_person(characterystic_type, specific_characteristic)
 
@@ -94,6 +128,20 @@ def find_item_with_characteristic(class_type: str, characteristic: str, furnitur
     Returns:
         Name of the found object
     """
+    # Parsear el argumento si viene como JSON string
+    import json
+    if isinstance(class_type, str) and class_type.startswith('{'):
+        try:
+            parsed = json.loads(class_type)
+            if 'class_type' in parsed:
+                class_type = parsed['class_type']
+            if 'characteristic' in parsed:
+                characteristic = parsed['characteristic']
+            if 'furniture' in parsed:
+                furniture = parsed['furniture']
+        except:
+            pass
+    
     with execution_lock:
         return tm.find_item_with_characteristic(class_type, characteristic, furniture)
 

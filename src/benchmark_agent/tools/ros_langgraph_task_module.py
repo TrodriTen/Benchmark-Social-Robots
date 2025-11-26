@@ -853,34 +853,25 @@ class Task_module:
         print("FIND ITEM WITH CHARACTERISTIC")
         if self.perception:
             try:
-                angles_to_check = [0]
-                self.setRPosture_srv("stand")
-                found = False
-                for angle in angles_to_check:
-                    print("angulo actual:",angle)
-                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
-                    if angle==0:
-                        rospy.sleep(1)
-                    elif angle==-60:
-                        rospy.sleep(3)
-                    elif angle==60:
-                        rospy.sleep(5)
-                    place_prompt = ""
-                    if place != "":
-                        place_prompt = f" in the {place}"
-                    if class_type == "color":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
-                    elif class_type == "size" or class_type == "weight":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
-                    elif class_type == "position":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
-                    elif class_type == "description":
-                        gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
-                    answer = self.img_description(gpt_vision_prompt,camera_name="bottom_camera")["message"]
-                    if not "none" in answer.lower():
-                        break
-                self.setRPosture_srv("stand")
-                return answer
+                place_prompt = ""
+                if place != "":
+                    place_prompt = f" in the {place}"
+                if class_type == "color":
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture has these colors: {characteristic}. Answer only with one word, either the item name or None"
+                elif class_type == "size" or class_type == "weight":
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is the {characteristic}. Answer only with one word, either the item name or None"
+                elif class_type == "position":
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is positioned {characteristic}most. Answer only with one word, either the item name or None"
+                elif class_type == "description":
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
+                else:
+                    gpt_vision_prompt = f"Which item{place_prompt} shown in the picture is {characteristic}. Answer only with one word, either the item name or None"
+                
+                answer = self.img_description(gpt_vision_prompt, camera_name="front_camera")
+                if isinstance(answer, dict):
+                    answer = answer.get("message", "None")
+                print(f"GPT Vision answer for item characteristic: {answer}")
+                return str(answer)
                 
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
@@ -892,18 +883,22 @@ class Task_module:
     def get_person_gesture(self)->str:
         """
         Input:
-        Output: True if person was found
+        Output: The gesture of the person in the image
         ----------
-        Looks for a specific person. This person is pointing, raising a hand, has a specific name, is breaking a particular rule or TODO is wearing a color
+        Looks at the centered person and determines their gesture
         """
         if self.perception:
-            if self.pytoolkit:
-                self.setRPosture_srv("stand")
-            gpt_vision_prompt = f"Answer about the person centered in the image. What gesture is the person doing. Answer only with one word or 'None' if you couldn't determine the gesture"
-            answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
-            return answer
+            try:
+                gpt_vision_prompt = f"What gesture is the person doing in this image? Answer only with one word or 'None' if you couldn't determine the gesture or no person is visible."
+                answer = self.img_description(gpt_vision_prompt, camera_name="front_camera")
+                if isinstance(answer, dict):
+                    answer = answer.get("message", "None")
+                return str(answer)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s" % e)
+                return "None"
         else:
-            print("perception or manipulation as false")
+            print("perception as false")
             return "None"
 
     def wait_for_head_touch(self, timeout = 15, message = "", message_interval = 5,language="English"):
@@ -1009,55 +1004,33 @@ class Task_module:
         """
         if self.perception:
             try:
-                angles_to_check = [0]
-                self.setRPosture_srv("stand")
-                self.look_for_object("person", ignore_already_seen=True)
-                specific_person_found = False
-                for angle in angles_to_check:
-                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-                    if angle==0:
-                        rospy.sleep(1)
-                    elif angle==-60:
-                        rospy.sleep(3)
-                    elif angle==60:
-                        rospy.sleep(5)
-                    persons = self.labels.get("person", [])
-                    for person in persons:
-                        self.center_head_with_label(person)
-                        if true_check:
-                            if class_type=="name":
-                                name = self.q_a("name")
-                                specific_characteristic = specific_characteristic.lower().replace(".","").replace("!","").replace("?","")
-                                if specific_characteristic in name:
-                                    specific_person_found = True 
-                                    break
-                            elif class_type=="pointing":
-                                if self.pointing == specific_characteristic:
-                                    specific_person_found = True 
-                                    break
-                            elif class_type=="raised_hand":
-                                if self.hand_up == specific_characteristic:
-                                    specific_person_found = True
-                                    break
-                            elif class_type=="colors":
-                                gpt_vision_prompt = f"Answer about the person centered in the image: Is the person wearing {specific_characteristic}? Answer only with True or False"
-                                answer = self.img_description(gpt_vision_prompt)["message"]
-                                if "True" in answer:
-                                    specific_person_found = True
-                                    break
-                        else:
-                            specific_person_found = True
-                            break
-                        # Despues de centrar la cabeza, devolverla al punto inicial para centrar a otra persona
-                        self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.1)
-                    if specific_person_found:
-                        break
-                self.setRPosture_srv("stand")
-                return specific_person_found
+                # Usar GPT Vision para buscar persona con característica específica
+                if class_type == "name":
+                    gpt_vision_prompt = f"Is there a person named {specific_characteristic} visible in this image? Answer only 'yes' or 'no'."
+                elif class_type == "pointing":
+                    gpt_vision_prompt = f"Is there a person pointing {specific_characteristic} in this image? Answer only 'yes' or 'no'."
+                elif class_type == "raised_hand":
+                    gpt_vision_prompt = f"Is there a person with {specific_characteristic} in this image? Answer only 'yes' or 'no'."
+                elif class_type == "colors":
+                    gpt_vision_prompt = f"Is there a person wearing {specific_characteristic} clothes in this image? Answer only 'yes' or 'no'."
+                else:
+                    gpt_vision_prompt = f"Is there a person with characteristic '{specific_characteristic}' in this image? Answer only 'yes' or 'no'."
+                
+                answer = self.img_description(gpt_vision_prompt, camera_name="front_camera")
+                if isinstance(answer, dict):
+                    answer = answer.get("message", "no")
+                print(f"GPT Vision answer for person search: {answer}")
+                
+                answer_lower = str(answer).lower().strip()
+                if answer_lower in ["yes", "sí", "si", "true", "1"] or "yes" in answer_lower:
+                    return True
+                return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
         else:
+            print("perception as false")
+            return False
             print("perception or manipulation as false")
             return False
 
@@ -1105,38 +1078,29 @@ class Task_module:
         timeout: time in seconds to look for the object while spinning
         Output: True if the object was found, False if not
         ----------
-        Spins while looking for <object_name> for <timeout> seconds while spinning at 15 deg/s
+        Looks for <object_name> using camera and GPT Vision
         """
         print("SEARCHING FOR OBJECT:", object_name)
-        # spins until the object is found or timeout
         if self.perception:
             try:
-                angles_to_check = [0,-60,60]
-                self.setRPosture_srv("stand")
-                self.look_for_object(object_name, ignore_already_seen=ignore_already_seen)
-                found = False
-                for angle in angles_to_check:
-                    print("angulo actual:",angle)
-                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), 0],0.1)
-                    if angle==0:
-                        rospy.sleep(1)
-                    elif angle==-60:
-                        rospy.sleep(3)
-                    elif angle==60:
-                        rospy.sleep(5)
-                    labels = self.labels.get(object_name, [])
-                    if len(labels)>0:
-                        label_found = labels[0]
-                        self.center_head_with_label(label_found)
-                        found = True
-                        break
-                self.setRPosture_srv("stand")
-                return found
+                # Usar GPT Vision para buscar el objeto en la imagen actual
+                gpt_vision_prompt = f"Is there a {object_name} visible in this image? Answer only 'yes' or 'no'."
+                answer = self.img_description(gpt_vision_prompt, camera_name="front_camera")
+                if isinstance(answer, dict):
+                    answer = answer.get("message", "no")
+                print(f"GPT Vision answer for {object_name}: {answer}")
+                
+                # Verificar si la respuesta indica que se encontró
+                answer_lower = str(answer).lower().strip()
+                if answer_lower in ["yes", "sí", "si", "true", "1"] or "yes" in answer_lower:
+                    return True
+                return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
                 return False
         else:
-            print("perception or navigation or manipulation as false")
+            print("perception as false")
+            return False
 
     def count_objects(self, object_name: str) -> int:
         """
@@ -1146,31 +1110,25 @@ class Task_module:
         Spins 360 degrees and then returns the number of objects of <object_name> seen
         """
         print("counting objects")
-        if self.perception and self.manipulation and self.pytoolkit:
+        if self.perception:
             try:
-                self.setRPosture_srv("stand")
-                angles_to_check = [0]
-                gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrrences"
-                counter = 0
-                for angle in angles_to_check:
-                    self.set_angles_srv(["HeadYaw","HeadPitch"],[math.radians(angle), -0.1],0.2)
-                    if angle==0:
-                        rospy.sleep(1)
-                    elif angle==-60:
-                        rospy.sleep(3)
-                    elif angle==60:
-                        rospy.sleep(5)
-                    answer = self.img_description(gpt_vision_prompt, camera_name="both")["message"]
-                    print(answer)
-                    if answer.isdigit():
-                        counter+= int(answer)
-                self.setRPosture_srv("stand")
-                return counter
+                gpt_vision_prompt = f"How many {object_name} are there in the picture? Answer only with an Integer number of occurrences. If none, answer 0."
+                answer = self.img_description(gpt_vision_prompt, camera_name="front_camera")
+                if isinstance(answer, dict):
+                    answer = answer.get("message", "0")
+                print(f"GPT Vision answer: {answer}")
+                # Extraer el primer número de la respuesta
+                import re
+                numbers = re.findall(r'\d+', str(answer))
+                if numbers:
+                    return int(numbers[0])
+                return 0
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
-                return False
+                return 0
         else:
-            print("perception, manipulation or navigation as false")
+            print("perception as false")
+            return 0
 
     def save_face(self, name: str, num_pics=5) -> bool:
         """
@@ -1680,10 +1638,14 @@ class Task_module:
         if self.navigation:
             try:
                 self.set_move_arms_enabled(False)
-                approved = self.go_to_place_proxy(place_name, graph)
+                response = self.go_to_place_proxy(place_name, graph)
+                # Extraer el campo 'answer' del response
+                approved = response.answer if hasattr(response, 'answer') else str(response)
+                print(f"[go_to_place] approved = '{approved}'")
                 navigation_success = False
                 if wait:
                     navigation_success = self.wait_go_to_place()
+                print(f"[go_to_place] navigation_success = {navigation_success}")
                 self.last_place = self.current_place
                 print("last place", self.last_place)
                 self.current_place = place_name
@@ -1691,8 +1653,10 @@ class Task_module:
                     self.setRPosture_srv("stand")
                 # Retornar True solo si el servicio fue aprobado Y la navegación fue exitosa
                 if approved == "approved" and (not wait or navigation_success):
+                    print(f"[go_to_place] ✓ Retornando True")
                     return True
                 else:
+                    print(f"[go_to_place] ✗ Retornando False (approved={approved}, nav_success={navigation_success})")
                     return False
             except rospy.ServiceException as e:
                 print("Service call failed: %s" % e)
