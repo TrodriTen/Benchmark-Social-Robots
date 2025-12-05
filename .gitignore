@@ -214,4 +214,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-.pyc
+
+tesis_results_20251119_030308/
+figures/
+baseline/
+reports/
